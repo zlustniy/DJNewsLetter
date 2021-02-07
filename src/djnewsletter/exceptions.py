@@ -1,0 +1,2 @@
+class UnsubscribeEmailConflict(Exception):
+    pass
