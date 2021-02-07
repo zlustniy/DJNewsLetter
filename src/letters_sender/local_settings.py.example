@@ -1,0 +1,11 @@
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'letters_sender',
+        'USER': 'letters_sender',
+        'PASSWORD': 'letters_sender',
+        'HOST': 'postgres',
+        'PORT': 5432,
+        'ATOMIC_REQUESTS': True,
+    }
+}
