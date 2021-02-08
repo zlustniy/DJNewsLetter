@@ -9,3 +9,5 @@ DATABASES = {
         'ATOMIC_REQUESTS': True,
     }
 }
+
+DJNEWSLETTER_CONTEXT = {}

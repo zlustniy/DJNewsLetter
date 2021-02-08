@@ -31,7 +31,8 @@ def send_by_smtp(message, **kwargs):
             if isinstance(attachment, tuple) and len(attachment) == 3:
                 message.attachments[idx] = create_attachment(*attachment)
 
-        conn.send_messages([message])
+        print(message)
+        # conn.send_messages([message])
         email_instance.status = 'sent to user'
     except Exception as e:
         email_instance.status = str(e)

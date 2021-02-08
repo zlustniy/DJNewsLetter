@@ -9,7 +9,7 @@ from django.test.utils import override_settings
 from django.utils.translation import gettext_lazy as _
 from djnewsletter.analytics import Analytics
 from djnewsletter.helpers import send_email
-from djnewsletter.mail import DJNewsletterEmailMessage
+from djnewsletter.mail import DJNewsLetterEmailMessage
 from djnewsletter.models import Emails, EmailServers, Domains, Bounced
 from djnewsletter.unisender import UniSenderAPIClient
 
@@ -174,7 +174,7 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
                 category='test_category',
                 newsletter='newsletter title'
             )
-            message = DJNewsletterEmailMessage(**kw)
+            message = DJNewsLetterEmailMessage(**kw)
             message.send()
 
             self.assertEqual(mocked_get_connection.call_count, 2)
@@ -201,7 +201,7 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
 
             Emails.objects.all().delete()
             del kw['newsletter']
-            message = DJNewsletterEmailMessage(**kw)
+            message = DJNewsLetterEmailMessage(**kw)
             message.send()
             self.assertEqual(Emails.objects.all().count(), 2)
 
@@ -250,7 +250,7 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
                 category='test_category',
                 newsletter='newsletter title'
             )
-            message = DJNewsletterEmailMessage(**kw)
+            message = DJNewsLetterEmailMessage(**kw)
             message.send()
             self.assertEqual(mocked_get_connection.call_count, 1)
             self.assertEqual(mocked_unisender.call_count, 1)
@@ -275,7 +275,7 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
 
             Emails.objects.all().delete()
             del kw['newsletter']
-            message = DJNewsletterEmailMessage(**kw)
+            message = DJNewsLetterEmailMessage(**kw)
             message.send()
             self.assertEqual(Emails.objects.all().count(), 2)
 
