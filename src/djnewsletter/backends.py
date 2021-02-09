@@ -11,13 +11,12 @@ from djnewsletter.helpers import get_content_subtype_and_body
 from djnewsletter.models import Emails, Unsubscribers, Bounced
 
 from .models import EmailServers
+from .options import DJNewsLetterSendingMethodOptions
 
 
 class DJNewsletterBackend(BaseEmailBackend):
-    tasks_mapping = {
-        'smtp': tasks.send_by_smtp,
-        'unisender_api': tasks.send_by_unisender,
-    }
+    def __init__(self):
+        self.sending_options = DJNewsLetterSendingMethodOptions()
 
     def run_task(self, message, email, email_server):
         try:
