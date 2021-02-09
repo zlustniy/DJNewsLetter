@@ -1,6 +1,7 @@
 import collections
-from gettext import gettext
+from datetime import datetime, timedelta
 
+from django.conf import settings
 from django.contrib.sites.models import Site
 
 from .exceptions import (
@@ -11,25 +12,29 @@ from .mail import (
 )
 from .models import (
     Bounced,
-    EmailServers, Emails,
+    EmailServers,
+    Emails,
+    Unsubscribers,
+)
+from .options import (
+    DJNewsLetterSendingMethodOptions,
 )
 
 
-class MessageHandler:
+class DJNewsLetterSendingHandlers:
     def __init__(self):
         self.handlers = {
             DJNewsLetterEmailMessage: DJNewsLetterEmailMessageHandler,
         }
 
-    def handle(self, message):
-        message_handler = self.handlers.get(type(message), DefaultEmailMessageHandler)
-        message = message_handler(message).handle()
-        return message
+    def get_handler(self, message):
+        handler = self.handlers.get(type(message), DefaultEmailMessageHandler)
+        return handler(message)
 
 
 class BaseEmailMessageHandler:
     def __init__(self, message):
-        self.errors = []
+        self.sending_options = DJNewsLetterSendingMethodOptions()
         self.message = message
         self.site_id = self.get_site_id()
 
@@ -64,8 +69,20 @@ class BaseEmailMessageHandler:
                     setattr(self.message, 'content_subtype', 'html')
                     setattr(self.message, 'body', body)
 
-    def create_email_instance(self, **kwargs):
-        return Emails(kwargs)
+    def create_email(self, sender, recipients, status, used_server=None, save=True):
+        email = Emails(
+            type=self.message.content_subtype,
+            sender=sender,
+            recipient=recipients,
+            body=self.message.body,
+            subject=self.message.subject,
+            newsletter=self.message.newsletter,
+            status=status,
+            used_server=used_server
+        )
+        if save:
+            email.save()
+        return email
 
 
 class DefaultEmailMessageHandler(BaseEmailMessageHandler):
@@ -75,7 +92,10 @@ class DefaultEmailMessageHandler(BaseEmailMessageHandler):
 
 class DJNewsLetterEmailMessageHandler(BaseEmailMessageHandler):
     def handle(self):
+        self.rewrite_content_subtype_and_body()
         self.handle_bounced()
+        self.handle_unsubscribe()
+        self.handle_interval_sending()
         self.handle_email_server()
         return self.message
 
@@ -88,15 +108,48 @@ class DJNewsLetterEmailMessageHandler(BaseEmailMessageHandler):
             if bounced_emails.exists():
                 bounced_emails = list(bounced_emails)
                 self.message.to = list(filter(lambda email: email not in bounced_emails, self.message.to))
-                self.errors.append(
-                    gettext(
-                        'Ранее были проблемы с получателями: `{bounced_emails}`. '
-                        'Они исключены из списка получателей.'.format(
-                            bounced_emails=bounced_emails,
-                        )
-                    )
+                self.create_email(
+                    sender='did not send',
+                    recipients=bounced_emails,
+                    status='There were problems with the recipient this letter previously',
                 )
-        return self.message
+
+    def handle_unsubscribe(self):
+        if self.message.newsletter:
+            if 'List-Unsubscribe' in self.message.extra_headers:
+                unsubscribers_emails = Unsubscribers.objects.filter(
+                    email__in=self.message.to,
+                    newsletter=self.message.newsletter,
+                ).values_list('email', flat=True)
+                if unsubscribers_emails.exists():
+                    unsubscribers_emails = list(unsubscribers_emails)
+                    self.message.to = list(filter(lambda email: email not in unsubscribers_emails, self.message.to))
+                    self.create_email(
+                        sender='did not send',
+                        recipients=unsubscribers_emails,
+                        status='Don\'t sent, because user is unsubscribe',
+                    )
+
+    def handle_interval_sending(self):
+        if self.message.newsletter:
+            interval_sending_to_recipient = settings.DJNEWSLETTER_INTERVAL_SENDING_TO_RECIPIENT
+            if interval_sending_to_recipient is not None:
+                already_sent_emails = Emails.objects.filter(
+                    recipient__in=self.message.to,
+                    newsletter=self.message.newsletter,
+                    status_hash='3b0cea37664e25d1060e6306dcdcef51',  # 'sent to user' hash
+                    changeDateTime__gt=datetime.now() - timedelta(
+                        hours=interval_sending_to_recipient,
+                    )
+                ).values_list('recipient', flat=True)
+                if already_sent_emails.exists():
+                    already_sent_emails = list(already_sent_emails)
+                    self.message.to = list(filter(lambda email: email not in already_sent_emails, self.message.to))
+                    self.create_email(
+                        sender='did not send',
+                        recipients=already_sent_emails,
+                        status='Letters are sent too frequently',
+                    )
 
     def handle_email_server(self):
         explicitly_specified_email_server = self.message.email_server
@@ -108,7 +161,7 @@ class DJNewsLetterEmailMessageHandler(BaseEmailMessageHandler):
         recipients_email_server_route = collections.defaultdict(list)
         for email in self.message.to:
             domain = email.split('@')[1]
-            email_server = next([
+            email_server = next(email_server for email_server in [
                 EmailServers.objects.filter(
                     is_active=True,
                     sites__id=self.site_id,
@@ -128,13 +181,11 @@ class DJNewsLetterEmailMessageHandler(BaseEmailMessageHandler):
                     is_active=True,
                     sites__isnull=True,
                 ).first()
-            ])
+            ] if email_server is not None)
             if not email_server:
                 raise SuitableEmailServerNotFoundException(
-                    gettext(
-                        'Ошибка выбора EmailServers для адреса: `email`'.format(
-                            email=email,
-                        )
+                    'Ошибка выбора EmailServers для адреса: `email`'.format(
+                        email=email,
                     )
                 )
             recipients_email_server_route[email_server].append(email)

@@ -14,11 +14,8 @@ BACKEND = getattr(settings, 'CELERY_EMAIL_BACKEND', 'django.core.mail.backends.s
 @task(queue='emails', time_limit=300)
 def send_by_smtp(message, **kwargs):
     email_instance = Emails.objects.get(pk=kwargs['email_pk'])
-    email_server = message.custom_args.get('email_server', None)
-    if not email_server:
-        raise Exception('Email send service unavailable. Active server doesn\'t exists')
     try:
-        server_settings = email_server.get_smtp_server_settings()
+        server_settings = message.email_server.get_smtp_server_settings()
         if server_settings:
             fail_silently = server_settings.pop('fail_silently', False)
             conn = get_connection(backend=BACKEND, fail_silently=fail_silently, **server_settings)
@@ -32,7 +29,7 @@ def send_by_smtp(message, **kwargs):
                 message.attachments[idx] = create_attachment(*attachment)
 
         print(message)
-        # conn.send_messages([message])
+        conn.send_messages([message])
         email_instance.status = 'sent to user'
     except Exception as e:
         email_instance.status = str(e)

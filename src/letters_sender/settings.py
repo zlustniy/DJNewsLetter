@@ -135,6 +135,7 @@ CELERY_RESULT_SERIALIZER = 'pickle'
 CELERY_TASK_ALWAYS_EAGER = True
 
 DJNEWSLETTER_CONTEXT = {}
+DJNEWSLETTER_INTERVAL_SENDING_TO_RECIPIENT = None
 
 REST_FRAMEWORK = {
     # Use Django's standard `django.contrib.auth` permissions,
