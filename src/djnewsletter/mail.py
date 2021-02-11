@@ -3,7 +3,7 @@ from django.core.mail import EmailMessage
 from django.template.loader import render_to_string
 
 
-class DJNewsLetterEmailMessage(EmailMessage):
+class DJNewsLetterEmailMessage:
     content_subtype = 'html'
 
     def __init__(
@@ -68,6 +68,4 @@ class DJNewsLetterEmailMessage(EmailMessage):
         if self.template:
             self.message.body = render_to_string(self.template, self.get_context())
 
-        if not self.message.recipients():
-            return 0
-        return self.message.get_connection(fail_silently).send_messages([self])
+        return self.message.send(fail_silently)
