@@ -47,19 +47,9 @@ class DJNewsLetterEmailMessage(EmailMessage):
         self.countdown = countdown
         self.eta = eta
         super().__init__(**kwargs)
-        # subject='',
-        # body='',
-        # from_email=None,
-        # to=None,
-        # bcc=None,
-        # connection=None,
-        # attachments=None,
-        # headers=None,
-        # cc=None,
-        # reply_to=None,
 
     def get_context(self):
-        context = getattr(settings, 'DJNEWSLETTER_CONTEXT', {})
+        context = settings.LETTER_CONTEXT
         context.update(self.context)
         return context
 
@@ -68,7 +58,3 @@ class DJNewsLetterEmailMessage(EmailMessage):
             self.body = render_to_string(self.template, self.get_context())
 
         super().send(fail_silently)
-
-    # def _create_attachment(self, filename, content, mimetype=None):
-    #     from djnewsletter.helpers import create_attachment
-    #     create_attachment(filename, content, mimetype=mimetype, encoding=self.encoding)

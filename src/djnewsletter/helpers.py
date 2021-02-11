@@ -53,31 +53,5 @@ def get_content_subtype_and_body(message):
 
 
 def send_email(**kwargs):
-    # recipients = kwargs.pop('to', [])
-    # email_servers = {}
-    # if 'email_server' in kwargs:
-    #     email_server = kwargs.pop('email_server', None)
-    #     is_ignore_site_id = True
-    # else:
-    #     is_ignore_site_id = False
-    # for recipient in recipients:
-    #     kwargs['to'] = [recipient]
-    #     if not is_ignore_site_id:
-    #         site_id = Site.objects.get_current().id
-    #         domain = recipient.split('@')[1]
-    #         key = '{}_{}'.format(domain, site_id)
-    #         if key not in email_servers:
-    #             email_servers[key] = EmailServers.objects.filter(
-    #                 is_active=True,
-    #                 sites__id=site_id,
-    #                 preferred_domains__domain=domain,
-    #             ).first() or EmailServers.objects.filter(
-    #                 is_active=True,
-    #                 sites__id=site_id,
-    #             ).first()
-    #         email_server = email_servers.get(key)
-    #
-    #     if email_server:
-    #         kwargs['custom_args'] = {'email_server': email_server}
     message = DJNewsLetterEmailMessage(**kwargs)
     message.send()

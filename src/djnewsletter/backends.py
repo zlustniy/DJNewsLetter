@@ -28,12 +28,6 @@ class DJNewsletterBackend(BaseEmailBackend):
             email.status = str(e)
             email.save()
 
-    def _get_from_email(self, email_server):
-        if email_server.sending_method == 'smtp':
-            return email_server.email_default_from
-        elif email_server.sending_method == 'unisender_api':
-            return email_server.api_from_email
-
     def send_messages(self, email_messages):
         for email_message in email_messages:
             with transaction.atomic():

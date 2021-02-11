@@ -132,7 +132,7 @@ class DJNewsLetterEmailMessageHandler(BaseEmailMessageHandler):
 
     def handle_interval_sending(self):
         if self.message.newsletter:
-            interval_sending_to_recipient = settings.DJNEWSLETTER_INTERVAL_SENDING_TO_RECIPIENT
+            interval_sending_to_recipient = settings.INTERVAL_SENDING_TO_RECIPIENT
             if interval_sending_to_recipient is not None:
                 already_sent_emails = Emails.objects.filter(
                     recipient__in=self.message.to,
@@ -184,7 +184,7 @@ class DJNewsLetterEmailMessageHandler(BaseEmailMessageHandler):
             ] if email_server is not None)
             if not email_server:
                 raise SuitableEmailServerNotFoundException(
-                    'Ошибка выбора EmailServers для адреса: `email`'.format(
+                    'Ошибка выбора EmailServers для адреса: `{email}`'.format(
                         email=email,
                     )
                 )
