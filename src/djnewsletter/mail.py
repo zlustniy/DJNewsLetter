@@ -46,21 +46,28 @@ class DJNewsLetterEmailMessage(EmailMessage):
         self.countdown = countdown
         self.eta = eta
         if message is None:
-            message = super().__init__(**kwargs)
-        self.message = message
+            message = EmailMessage(**kwargs)
+        self.message = self.prepare_message(message)
         self.recipients_email_server_route = {}
+        self.email_instance = None
 
     @property
     def to(self):
         return self.message.to
 
+    def prepare_message(self, message):
+        message.content_subtype = self.content_subtype
+        return message
+
     def get_context(self):
-        context = settings.LETTER_CONTEXT
+        context = settings.DJNEWSLETTER_LETTER_CONTEXT
         context.update(self.context)
         return context
 
     def send(self, fail_silently=False):
         if self.template:
-            self.body = render_to_string(self.template, self.get_context())
+            self.message.body = render_to_string(self.template, self.get_context())
 
-        super().send(fail_silently)
+        if not self.message.recipients():
+            return 0
+        return self.message.get_connection(fail_silently).send_messages([self])

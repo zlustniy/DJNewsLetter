@@ -23,7 +23,7 @@ class DJNewsLetterSendingMethodOptions:
     @cached_property
     def sending_method_choises(self):
         return [
-            (sending_method, options['label']) for sending_method, options in self.sending_method_options
+            (sending_method, options['label']) for sending_method, options in self.sending_method_options.items()
         ]
 
     def get_task_by_sending_method(self, sending_method):

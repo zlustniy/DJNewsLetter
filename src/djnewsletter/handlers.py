@@ -98,7 +98,9 @@ class DJNewsLetterEmailMessageHandler(BaseEmailMessageHandler):
             ).values_list('email', flat=True)
             if bounced_emails.exists():
                 bounced_emails = list(bounced_emails)
-                self.email_message.to = list(filter(lambda email: email not in bounced_emails, self.email_message.to))
+                self.email_message.message.to = list(
+                    filter(lambda email: email not in bounced_emails, self.email_message.to)
+                )
                 self.create_email(
                     sender='did not send',
                     recipients=bounced_emails,
@@ -114,8 +116,9 @@ class DJNewsLetterEmailMessageHandler(BaseEmailMessageHandler):
                 ).values_list('email', flat=True)
                 if unsubscribers_emails.exists():
                     unsubscribers_emails = list(unsubscribers_emails)
-                    self.email_message.to = list(
-                        filter(lambda email: email not in unsubscribers_emails, self.email_message.to))
+                    self.email_message.message.to = list(
+                        filter(lambda email: email not in unsubscribers_emails, self.email_message.to)
+                    )
                     self.create_email(
                         sender='did not send',
                         recipients=unsubscribers_emails,
@@ -136,8 +139,9 @@ class DJNewsLetterEmailMessageHandler(BaseEmailMessageHandler):
                 ).values_list('recipient', flat=True)
                 if already_sent_emails.exists():
                     already_sent_emails = list(already_sent_emails)
-                    self.email_message.to = list(
-                        filter(lambda email: email not in already_sent_emails, self.email_message.to))
+                    self.email_message.message.to = list(
+                        filter(lambda email: email not in already_sent_emails, self.email_message.to)
+                    )
                     self.create_email(
                         sender='did not send',
                         recipients=already_sent_emails,

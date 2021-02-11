@@ -4,6 +4,8 @@ from django.contrib.sites.models import Site
 from django.core.exceptions import ValidationError
 from django.db import models
 
+from djnewsletter.options import DJNewsLetterSendingMethodOptions
+
 
 class Unsubscribers(models.Model):
     email = models.EmailField(max_length=255, verbose_name='email')
@@ -64,11 +66,6 @@ class Domains(models.Model):
 
 
 class EmailServers(models.Model):
-    SENDING_METHOD_CHOICES = (
-        ('smtp', 'SMTP сервер'),
-        ('unisender_api', 'UniSender API'),
-    )
-
     email_default_from = models.CharField(verbose_name='from:', max_length=100, null=True, blank=True)
     email_host = models.CharField(verbose_name='хост', max_length=100, null=True, blank=True)
     email_port = models.IntegerField(verbose_name='порт', null=True, blank=True)
@@ -90,7 +87,8 @@ class EmailServers(models.Model):
     api_from_name = models.CharField(
         verbose_name='Имя перед адресом для отправки через API', max_length=128, null=True, blank=True)
     sending_method = models.CharField(
-        max_length=32, verbose_name='Способ отправки писем', choices=SENDING_METHOD_CHOICES, default='smtp')
+        max_length=32, verbose_name='Способ отправки писем',
+        choices=DJNewsLetterSendingMethodOptions().sending_method_choises, default='smtp')
     main = models.BooleanField(default=False, verbose_name='Основной сервер')
     is_active = models.BooleanField(default=False, verbose_name='Сервер активен')
     preferred_domains = models.ManyToManyField(Domains, verbose_name='Предпочтительней для доменов', blank=True)
