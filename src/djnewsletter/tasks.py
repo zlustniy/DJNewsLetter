@@ -2,9 +2,15 @@ from celery.task import task, current
 from django.conf import settings
 from django.core.mail import get_connection
 
-from djnewsletter.helpers import create_attachment
-from djnewsletter.models import Emails
-from djnewsletter.unisender import UniSenderAPIClient
+from .helpers import (
+    create_attachment,
+)
+from .models import (
+    Emails,
+)
+from .unisender import (
+    UniSenderAPIClient,
+)
 
 MAX_RETRIES = 5
 COUNTDOWN = 60  # seconds
@@ -21,14 +27,14 @@ def send_by_smtp(email_message, **kwargs):
         else:
             conn = get_connection(backend=BACKEND)
 
-        email_instance.message.attachments.extend(
-            email_instance.inline_attachments
+        email_message.message.attachments.extend(
+            email_message.inline_attachments
         )
-        for idx, attachment in enumerate(email_instance.message.attachments):
+        for idx, attachment in enumerate(email_message.message.attachments):
             if isinstance(attachment, tuple) and len(attachment) == 3:
-                email_instance.message.attachments[idx] = create_attachment(*attachment)
+                email_message.message.attachments[idx] = create_attachment(*attachment)
 
-        conn.send_messages([email_instance.message])
+        conn.send_messages([email_message.message])
         email_instance.status = 'sent to user'
     except Exception as e:
         email_instance.status = str(e)

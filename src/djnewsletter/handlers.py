@@ -16,9 +16,6 @@ from .models import (
     Emails,
     Unsubscribers,
 )
-from .options import (
-    DJNewsLetterSendingMethodOptions,
-)
 
 
 class DJNewsLetterSendingHandlers:
@@ -42,7 +39,6 @@ class DJNewsLetterSendingHandlers:
 
 class BaseEmailMessageHandler:
     def __init__(self, email_message):
-        self.sending_options = DJNewsLetterSendingMethodOptions()
         self.email_message = email_message
         self.site_id = self.get_site_id()
 
@@ -51,31 +47,6 @@ class BaseEmailMessageHandler:
 
     def get_site_id(self):
         return Site.objects.get_current().id
-
-    def set_recipients_email_server_route(self, recipients_email_server_route):
-        """
-
-        @param recipients_email_server_route: Через какой почтовый сервер на какие электронные адреса отправлять письма.
-        {
-            EmailServers_object_1: ['email_1@mail.ru', 'email_3@mail.ru'],
-            EmailServers_object_2: ['email_2@mail.ru', 'email_4@mail.ru'],
-            EmailServers_object_3: ['email_5@mail.ru'],
-        }
-
-        """
-        self.email_message.recipients_email_server_route = recipients_email_server_route
-
-    def rewrite_content_subtype_and_body(self):
-        """
-        Работа с alternative content types.
-        :param message:
-        :return:
-        """
-        if self.email_message.message.content_subtype != 'html':
-            for body, content_subtype in getattr(self.email_message.message, 'alternatives', []):
-                if content_subtype == 'text/html':
-                    setattr(self.email_message.message, 'content_subtype', 'html')
-                    setattr(self.email_message.message, 'body', body)
 
     def create_email(self, sender, recipients, status, used_server=None, save=True):
         email = Emails(
@@ -106,6 +77,18 @@ class DJNewsLetterEmailMessageHandler(BaseEmailMessageHandler):
         self.handle_interval_sending()
         self.handle_email_server()
         return self.email_message
+
+    def rewrite_content_subtype_and_body(self):
+        """
+        Работа с alternative content types.
+        :param message:
+        :return:
+        """
+        if self.email_message.message.content_subtype != 'html':
+            for body, content_subtype in getattr(self.email_message.message, 'alternatives', []):
+                if content_subtype == 'text/html':
+                    setattr(self.email_message.message, 'content_subtype', 'html')
+                    setattr(self.email_message.message, 'body', body)
 
     def handle_bounced(self):
         if self.email_message.newsletter:
