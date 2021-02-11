@@ -23,19 +23,27 @@ from .options import (
 
 class DJNewsLetterSendingHandlers:
     def __init__(self):
+        """
+        Пока у нас один тип сообщений - DJNewsLetterEmailMessage.
+        Отличия могут быть только во вложенном (родительском) объекте - DJNewsLetterEmailMessage.message.
+        Отличия вызваны разными точками входа в DJNewsletterBackend().send_messages(email_messages):
+        - метод send_email;
+        - отправка формы из CMS;
+        - другие.
+        """
         self.handlers = {
             DJNewsLetterEmailMessage: DJNewsLetterEmailMessageHandler,
         }
 
-    def get_handler(self, message):
-        handler = self.handlers.get(type(message), DefaultEmailMessageHandler)
-        return handler(message)
+    def get_handler(self, email_message):
+        handler = self.handlers.get(type(email_message), DefaultEmailMessageHandler)
+        return handler(email_message)
 
 
 class BaseEmailMessageHandler:
-    def __init__(self, message):
+    def __init__(self, email_message):
         self.sending_options = DJNewsLetterSendingMethodOptions()
-        self.message = message
+        self.email_message = email_message
         self.site_id = self.get_site_id()
 
     def handle(self):
@@ -55,7 +63,7 @@ class BaseEmailMessageHandler:
         }
 
         """
-        setattr(self.message, 'recipients_email_server_route', recipients_email_server_route)
+        self.email_message.recipients_email_server_route = recipients_email_server_route
 
     def rewrite_content_subtype_and_body(self):
         """
@@ -63,20 +71,20 @@ class BaseEmailMessageHandler:
         :param message:
         :return:
         """
-        if self.message.content_subtype != 'html':
-            for body, content_subtype in getattr(self.message, 'alternatives', []):
+        if self.email_message.message.content_subtype != 'html':
+            for body, content_subtype in getattr(self.email_message.message, 'alternatives', []):
                 if content_subtype == 'text/html':
-                    setattr(self.message, 'content_subtype', 'html')
-                    setattr(self.message, 'body', body)
+                    setattr(self.email_message.message, 'content_subtype', 'html')
+                    setattr(self.email_message.message, 'body', body)
 
     def create_email(self, sender, recipients, status, used_server=None, save=True):
         email = Emails(
-            type=self.message.content_subtype,
+            type=self.email_message.message.content_subtype,
             sender=sender,
             recipient=recipients,
-            body=self.message.body,
-            subject=self.message.subject,
-            newsletter=self.message.newsletter,
+            body=self.email_message.message.body,
+            subject=self.email_message.message.subject,
+            newsletter=self.email_message.newsletter,
             status=status,
             used_server=used_server
         )
@@ -87,7 +95,7 @@ class BaseEmailMessageHandler:
 
 class DefaultEmailMessageHandler(BaseEmailMessageHandler):
     def handle(self):
-        return self.message
+        return self.email_message
 
 
 class DJNewsLetterEmailMessageHandler(BaseEmailMessageHandler):
@@ -97,17 +105,17 @@ class DJNewsLetterEmailMessageHandler(BaseEmailMessageHandler):
         self.handle_unsubscribe()
         self.handle_interval_sending()
         self.handle_email_server()
-        return self.message
+        return self.email_message
 
     def handle_bounced(self):
-        if self.message.newsletter:
+        if self.email_message.newsletter:
             bounced_emails = Bounced.objects.filter(
-                email__in=self.message.to,
+                email__in=self.email_message.to,
                 event__in=['bounce', 'dropped', 'spamreport'],
             ).values_list('email', flat=True)
             if bounced_emails.exists():
                 bounced_emails = list(bounced_emails)
-                self.message.to = list(filter(lambda email: email not in bounced_emails, self.message.to))
+                self.email_message.to = list(filter(lambda email: email not in bounced_emails, self.email_message.to))
                 self.create_email(
                     sender='did not send',
                     recipients=bounced_emails,
@@ -115,15 +123,16 @@ class DJNewsLetterEmailMessageHandler(BaseEmailMessageHandler):
                 )
 
     def handle_unsubscribe(self):
-        if self.message.newsletter:
-            if 'List-Unsubscribe' in self.message.extra_headers:
+        if self.email_message.newsletter:
+            if 'List-Unsubscribe' in self.email_message.message.extra_headers:
                 unsubscribers_emails = Unsubscribers.objects.filter(
-                    email__in=self.message.to,
-                    newsletter=self.message.newsletter,
+                    email__in=self.email_message.to,
+                    newsletter=self.email_message.newsletter,
                 ).values_list('email', flat=True)
                 if unsubscribers_emails.exists():
                     unsubscribers_emails = list(unsubscribers_emails)
-                    self.message.to = list(filter(lambda email: email not in unsubscribers_emails, self.message.to))
+                    self.email_message.to = list(
+                        filter(lambda email: email not in unsubscribers_emails, self.email_message.to))
                     self.create_email(
                         sender='did not send',
                         recipients=unsubscribers_emails,
@@ -131,12 +140,12 @@ class DJNewsLetterEmailMessageHandler(BaseEmailMessageHandler):
                     )
 
     def handle_interval_sending(self):
-        if self.message.newsletter:
+        if self.email_message.newsletter:
             interval_sending_to_recipient = settings.INTERVAL_SENDING_TO_RECIPIENT
             if interval_sending_to_recipient is not None:
                 already_sent_emails = Emails.objects.filter(
-                    recipient__in=self.message.to,
-                    newsletter=self.message.newsletter,
+                    recipient__in=self.email_message.to,
+                    newsletter=self.email_message.newsletter,
                     status_hash='3b0cea37664e25d1060e6306dcdcef51',  # 'sent to user' hash
                     changeDateTime__gt=datetime.now() - timedelta(
                         hours=interval_sending_to_recipient,
@@ -144,7 +153,8 @@ class DJNewsLetterEmailMessageHandler(BaseEmailMessageHandler):
                 ).values_list('recipient', flat=True)
                 if already_sent_emails.exists():
                     already_sent_emails = list(already_sent_emails)
-                    self.message.to = list(filter(lambda email: email not in already_sent_emails, self.message.to))
+                    self.email_message.to = list(
+                        filter(lambda email: email not in already_sent_emails, self.email_message.to))
                     self.create_email(
                         sender='did not send',
                         recipients=already_sent_emails,
@@ -152,14 +162,14 @@ class DJNewsLetterEmailMessageHandler(BaseEmailMessageHandler):
                     )
 
     def handle_email_server(self):
-        explicitly_specified_email_server = self.message.email_server
+        explicitly_specified_email_server = self.email_message.email_server
         if explicitly_specified_email_server:
-            self.set_recipients_email_server_route({
-                explicitly_specified_email_server: self.message.to,
-            })
+            self.email_message.recipients_email_server_route = {
+                explicitly_specified_email_server: self.email_message.to,
+            }
             return
         recipients_email_server_route = collections.defaultdict(list)
-        for email in self.message.to:
+        for email in self.email_message.to:
             domain = email.split('@')[1]
             email_server = next(email_server for email_server in [
                 EmailServers.objects.filter(
@@ -189,4 +199,4 @@ class DJNewsLetterEmailMessageHandler(BaseEmailMessageHandler):
                     )
                 )
             recipients_email_server_route[email_server].append(email)
-        self.set_recipients_email_server_route(recipients_email_server_route)
+        self.email_message.recipients_email_server_route = recipients_email_server_route

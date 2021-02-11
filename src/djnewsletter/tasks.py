@@ -2,7 +2,7 @@ from celery.task import task, current
 from django.conf import settings
 from django.core.mail import get_connection
 
-from djnewsletter.helpers import create_attachment, get_content_subtype_and_body
+from djnewsletter.helpers import create_attachment
 from djnewsletter.models import Emails
 from djnewsletter.unisender import UniSenderAPIClient
 
@@ -12,24 +12,23 @@ BACKEND = getattr(settings, 'CELERY_EMAIL_BACKEND', 'django.core.mail.backends.s
 
 
 @task(queue='emails', time_limit=300)
-def send_by_smtp(message, **kwargs):
+def send_by_smtp(email_message, **kwargs):
     email_instance = Emails.objects.get(pk=kwargs['email_pk'])
     try:
-        server_settings = message.email_server.get_smtp_server_settings()
+        server_settings = email_message.email_server.get_smtp_server_settings()
         if server_settings:
-            fail_silently = server_settings.pop('fail_silently', False)
-            conn = get_connection(backend=BACKEND, fail_silently=fail_silently, **server_settings)
+            conn = get_connection(backend=BACKEND, **server_settings)
         else:
             conn = get_connection(backend=BACKEND)
 
-        inline_attachments = getattr(message, 'inline_attachments', [])
-        message.attachments.extend(inline_attachments)
-        for idx, attachment in enumerate(message.attachments):
+        email_instance.message.attachments.extend(
+            email_instance.inline_attachments
+        )
+        for idx, attachment in enumerate(email_instance.message.attachments):
             if isinstance(attachment, tuple) and len(attachment) == 3:
-                message.attachments[idx] = create_attachment(*attachment)
+                email_instance.message.attachments[idx] = create_attachment(*attachment)
 
-        print(message)
-        conn.send_messages([message])
+        conn.send_messages([email_instance.message])
         email_instance.status = 'sent to user'
     except Exception as e:
         email_instance.status = str(e)
@@ -39,28 +38,21 @@ def send_by_smtp(message, **kwargs):
 
 
 @task(queue='emails', time_limit=300)
-def send_by_unisender(message, **kwargs):
+def send_by_unisender(email_message, **kwargs):
     email_instance = Emails.objects.get(pk=kwargs['email_pk'])
-    email_server = message.custom_args.get('email_server', None)
-    if not email_server:
-        raise Exception('Email send service unavailable. Active server doesn\'t exists')
-
     unisender_api = UniSenderAPIClient(
-        api_key=email_server.api_key,
-        username=email_server.api_username)
-
+        api_key=email_message.email_server.api_key,
+        username=email_message.email_server.api_username,
+    )
     try:
-        _, body = get_content_subtype_and_body(message)
-
-        inline_attachments = getattr(message, 'inline_attachments', [])
         response_json = unisender_api.send(
-            subject=message.subject,
-            body_html=body,
-            from_email=message.from_email or email_server.api_default_from,
-            from_name=email_server.api_from_name,
-            recipients=message.to,
-            attachments=message.attachments,
-            inline_attachments=inline_attachments,
+            subject=email_message.message.subject,
+            body_html=email_message.message.body,
+            from_email=email_message.message.from_email,
+            from_name=email_message.email_server.api_from_name,
+            recipients=email_message.to,
+            attachments=email_message.message.attachments,
+            inline_attachments=email_message.inline_attachments,
         )
     except Exception as e:
         email_instance.status = str(e)

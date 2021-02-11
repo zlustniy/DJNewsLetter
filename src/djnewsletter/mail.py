@@ -2,8 +2,6 @@ from django.conf import settings
 from django.core.mail import EmailMessage
 from django.template.loader import render_to_string
 
-DEFAULT_ATTACHMENT_MIME_TYPE = 'application/octet-stream'
-
 
 class DJNewsLetterEmailMessage(EmailMessage):
     content_subtype = 'html'
@@ -20,6 +18,7 @@ class DJNewsLetterEmailMessage(EmailMessage):
             api_key={},  # Maybe need remove
             countdown=None,
             eta=None,
+            message=None,
             **kwargs,
     ):
         """
@@ -46,7 +45,14 @@ class DJNewsLetterEmailMessage(EmailMessage):
         self.api_key = api_key
         self.countdown = countdown
         self.eta = eta
-        super().__init__(**kwargs)
+        if message is None:
+            message = super().__init__(**kwargs)
+        self.message = message
+        self.recipients_email_server_route = {}
+
+    @property
+    def to(self):
+        return self.message.to
 
     def get_context(self):
         context = settings.LETTER_CONTEXT
