@@ -16,9 +16,11 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 
+from mail.api.views import SendEmailsApiView
 from mail.urls import mail_urlpatterns
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('mail/', include(mail_urlpatterns)),
+    path('', SendEmailsApiView.as_view(), name='send_emails_api_view')  # TODO: remove!!
 ]
