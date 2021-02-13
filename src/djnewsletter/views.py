@@ -3,6 +3,7 @@ from datetime import datetime
 
 from django.http import HttpResponse, Http404, HttpResponseBadRequest
 from django.views.decorators.csrf import csrf_exempt
+
 from djnewsletter.models import Bounced
 
 

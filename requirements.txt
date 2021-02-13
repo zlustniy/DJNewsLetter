@@ -8,3 +8,4 @@ django-filter==2.4.0
 celery==4.4.2
 requests==2.23.0
 django-appconf>=1.0.4
+mock==4.0.3

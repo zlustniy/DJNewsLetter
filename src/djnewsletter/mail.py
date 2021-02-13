@@ -1,10 +1,18 @@
+import mimetypes
+from email import encoders
+from email.header import Header
+from email.mime.base import MIMEBase
+
 from django.conf import settings
 from django.core.mail import EmailMessage
+from django.core.mail.message import SafeMIMEText
 from django.template.loader import render_to_string
+from django.utils.encoding import smart_str
 
 
 class DJNewsLetterEmailMessage:
-    content_subtype = 'html'
+    CONTENT_SUBTYPE = 'html'
+    DEFAULT_ATTACHMENT_MIME_TYPE = 'application/octet-stream'
 
     def __init__(
             self,
@@ -56,7 +64,7 @@ class DJNewsLetterEmailMessage:
         return self.message.to
 
     def prepare_message(self, message):
-        message.content_subtype = self.content_subtype
+        message.content_subtype = self.CONTENT_SUBTYPE
         return message
 
     def get_context(self):
@@ -69,3 +77,34 @@ class DJNewsLetterEmailMessage:
             self.message.body = render_to_string(self.template, self.get_context())
 
         return self.message.send(fail_silently)
+
+    @staticmethod
+    def create_mime_attachment(self, filename, content, mimetype=None, encoding=None):
+        """
+        Converts the filename, content, mimetype triple into a MIME attachment
+        object. Use self.encoding when handling text attachments.
+        """
+        if mimetype is None:
+            mimetype, _ = mimetypes.guess_type(filename)
+            if mimetype is None:
+                mimetype = self.DEFAULT_ATTACHMENT_MIME_TYPE
+
+        basetype, subtype = mimetype.split('/', 1)
+        if basetype == 'text':
+            encoding = encoding or settings.DEFAULT_CHARSET
+            attachment = SafeMIMEText(smart_str(content, settings.DEFAULT_CHARSET), subtype, encoding)
+        else:
+            # Encode non-text attachments with base64.
+            attachment = MIMEBase(basetype, subtype)
+            attachment.set_payload(content)
+            encoders.encode_base64(attachment)
+
+        if filename:
+            try:
+                filename.encode('ascii')
+            except UnicodeEncodeError:
+                filename = Header(filename, 'utf-8').encode()
+            attachment.add_header('Content-Disposition', 'attachment', filename=filename)
+            attachment.add_header('Content-ID', '<{}>'.format(filename))
+
+        return attachment

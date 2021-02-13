@@ -2,9 +2,6 @@ from celery.task import task, current
 from django.conf import settings
 from django.core.mail import get_connection
 
-from .helpers import (
-    create_attachment,
-)
 from .unisender import (
     UniSenderAPIClient,
 )
@@ -28,7 +25,7 @@ def send_by_smtp(email_message):
         )
         for idx, attachment in enumerate(email_message.message.attachments):
             if isinstance(attachment, tuple) and len(attachment) == 3:
-                email_message.message.attachments[idx] = create_attachment(*attachment)
+                email_message.message.attachments[idx] = email_message.create_mime_attachment(*attachment)
 
         conn.send_messages([email_message.message])
         email_message.email_instance.status = 'sent to user'
