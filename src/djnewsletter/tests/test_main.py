@@ -30,6 +30,27 @@ class SimpleEmailTest(TestCase):
         self.assertEqual(Emails.objects.count(), 0)
 
 
+@override_settings(
+    EMAIL_BACKEND='djnewsletter.backends.EmailBackend'
+)
+@mock.patch('djnewsletter.tasks.get_connection')
+class SimpleEmailTest1(TestCase):
+    # TODO!
+    def test_send_email(self, mocked_get_connection):
+        with mock.patch.object(transaction, 'on_commit', lambda f: f()):
+            mail.send_mail(
+                subject='Subject here',
+                message='Here is the <b>message</b>',
+                from_email='from@example.com',
+                recipient_list=['some@email.com'],
+                fail_silently=False,
+            )
+
+            self.assertEqual(len(mail.outbox), 1)
+            self.assertEqual(mail.outbox[0].subject, 'Subject here')
+            self.assertEqual(Emails.objects.count(), 0)
+
+
 class DummyBackendDJNewsletterEmailMessageTests(TestCase):
     def test_send_email(self):
         send_email(
