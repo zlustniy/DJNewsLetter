@@ -10,23 +10,20 @@ from django.template.loader import render_to_string
 from django.utils.encoding import smart_str
 
 
-class DJNewsLetterEmailMessage:
-    CONTENT_SUBTYPE = 'html'
-    DEFAULT_ATTACHMENT_MIME_TYPE = 'application/octet-stream'
+class DJNewsLetterEmailMessage(EmailMessage):
+    content_subtype = 'html'
+    default_attachment_mime_type = 'application/octet-stream'
 
     def __init__(
             self,
             email_server=None,
             category=None,
             template=None,
-            context={},
+            context=None,
             newsletter=None,
-            inline_attachments=[],  # Подумать что делать с ними
-            server_settings={},  # Maybe need remove
-            api_key={},  # Maybe need remove
+            inline_attachments=None,
             countdown=None,
             eta=None,
-            message=None,
             **kwargs,
     ):
         """
@@ -46,26 +43,17 @@ class DJNewsLetterEmailMessage:
         self.email_server = email_server
         self.category = category
         self.template = template
-        self.context = context
+        self.context = context or {}
         self.newsletter = newsletter
-        self.inline_attachments = inline_attachments
-        self.server_settings = server_settings
-        self.api_key = api_key
+        self.inline_attachments = inline_attachments or []
         self.countdown = countdown
         self.eta = eta
-        if message is None:
-            message = EmailMessage(**kwargs)
-        self.message = self.prepare_message(message)
         self.recipients_email_server_route = {}
         self.email_instance = None
+        super().__init__(**kwargs)
 
-    @property
-    def to(self):
-        return self.message.to
-
-    def prepare_message(self, message):
-        message.content_subtype = self.CONTENT_SUBTYPE
-        return message
+    def copy_attributes_from_child_instance(self, child_instance):
+        self.__dict__.update(child_instance.__dict__)
 
     def get_context(self):
         context = settings.DJNEWSLETTER_LETTER_CONTEXT
@@ -74,12 +62,14 @@ class DJNewsLetterEmailMessage:
 
     def send(self, fail_silently=False):
         if self.template:
-            self.message.body = render_to_string(self.template, self.get_context())
+            self.body = render_to_string(self.template, self.get_context())
 
-        return self.message.send(fail_silently)
+        return super().send(fail_silently)
 
-    @staticmethod
     def create_mime_attachment(self, filename, content, mimetype=None, encoding=None):
+        return self._create_attachment(filename, content, mimetype, encoding)
+
+    def _create_attachment(self, filename, content, mimetype=None, encoding=None):
         """
         Converts the filename, content, mimetype triple into a MIME attachment
         object. Use self.encoding when handling text attachments.
@@ -87,7 +77,7 @@ class DJNewsLetterEmailMessage:
         if mimetype is None:
             mimetype, _ = mimetypes.guess_type(filename)
             if mimetype is None:
-                mimetype = self.DEFAULT_ATTACHMENT_MIME_TYPE
+                mimetype = self.default_attachment_mime_type
 
         basetype, subtype = mimetype.split('/', 1)
         if basetype == 'text':

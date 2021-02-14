@@ -6,9 +6,7 @@ from django.db import transaction
 from .handlers import (
     DJNewsLetterSendingHandlers,
 )
-from .mail import (
-    DJNewsLetterEmailMessage,
-)
+from .mail import DJNewsLetterEmailMessage
 from .options import (
     DJNewsLetterSendingMethodOptions,
 )
@@ -34,9 +32,9 @@ class DJNewsletterBackend(BaseEmailBackend):
     @staticmethod
     def unify_email_message(message):
         if not isinstance(message, DJNewsLetterEmailMessage):
-            return DJNewsLetterEmailMessage(
-                message=message,
-            )
+            djnewsletter_email_message = DJNewsLetterEmailMessage()
+            djnewsletter_email_message.copy_attributes_from_child_instance(message)
+            return djnewsletter_email_message
         return message
 
     def send_messages(self, email_messages):
@@ -54,8 +52,8 @@ class DJNewsletterBackend(BaseEmailBackend):
                         status='sent to queue',
                     )
                     email_message_for_task = deepcopy(email_message)
-                    email_message_for_task.message.to = recipients
-                    email_message_for_task.message.from_email = from_email
+                    email_message_for_task.to = recipients
+                    email_message_for_task.from_email = from_email
                     email_message_for_task.email_server = email_server
                     transaction.on_commit(
                         lambda m=email_message_for_task: self.run_task(

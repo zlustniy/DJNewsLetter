@@ -7,6 +7,7 @@ from django.db import transaction
 from django.test import TestCase
 from django.test.utils import override_settings
 from django.utils.translation import gettext_lazy as _
+
 from djnewsletter.analytics import Analytics
 from djnewsletter.helpers import send_email
 from djnewsletter.mail import DJNewsLetterEmailMessage
@@ -75,9 +76,6 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
                 body='Here is the <b>message</b>.',
                 to=['some@email.com'],
                 email_server=self.email_server,
-                custom_args={
-                    'test_arg': 'test_value'
-                },
                 category='test_category'
             )
 
@@ -93,35 +91,7 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
             self.assertEqual(email_instance.recipient, "['some@email.com']")
             self.assertEqual(email_instance.status, 'sent to user')
 
-    def test_no_preferred_domains_with_custom_args(self, mocked_get_connection):
-        self.email_server.preferred_domains.clear()
-        self.email_server.main = True
-        self.email_server.save(update_fields=('main',))
-        self.email_server.refresh_from_db()
-        with mock.patch.object(transaction, 'on_commit', lambda f: f()):
-            send_email(
-                subject='Subject here',
-                body='Here is the <b>message</b>.',
-                to=['some@email.com'],
-                custom_args={
-                    'test_arg': 'test_value'
-                },
-                category='test_category'
-            )
-
-            mocked_get_connection.assert_called_once_with(backend='django.core.mail.backends.smtp.EmailBackend',
-                                                          fail_silently=True, host='some host', password='123',
-                                                          port=1234, timeout=50, use_ssl=True, use_tls=False,
-                                                          username='lame')
-
-            emails = Emails.objects.all()
-            self.assertEqual(emails.count(), 1)
-
-            email_instance = emails[0]
-            self.assertEqual(email_instance.recipient, "['some@email.com']")
-            self.assertEqual(email_instance.status, 'sent to user')
-
-    def test_no_preferred_domains_with_missing_custom_args(self, mocked_get_connection):
+    def test_no_preferred_domains(self, mocked_get_connection):
         self.email_server.preferred_domains.clear()
         self.email_server.main = True
         self.email_server.save(update_fields=('main',))
@@ -327,9 +297,6 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
                 subject='Subject here',
                 body='Here is the <b>message</b>.',
                 to=['some@email.com'],
-                custom_args={
-                    'test_arg': 'test_value'
-                },
                 category='test_category'
             )
             mocked_get_connection.assert_called_once_with(backend='django.core.mail.backends.smtp.EmailBackend',
@@ -386,9 +353,6 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
                 subject='Subject here',
                 body='Here is the <b>message</b>.',
                 to=['some@email.com'],
-                custom_args={
-                    'test_arg': 'test_value'
-                },
                 category='test_category'
             )
             mocked_get_connection.assert_called_once_with(backend='django.core.mail.backends.smtp.EmailBackend',
@@ -442,9 +406,6 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
                 subject='Subject here',
                 body='Here is the <b>message</b>.',
                 to=['some@email.com'],
-                custom_args={
-                    'test_arg': 'test_value'
-                },
                 category='test_category'
             )
             mocked_get_connection.assert_called_once_with(backend='django.core.mail.backends.smtp.EmailBackend',
@@ -496,9 +457,6 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
                 subject='Subject here',
                 body='Here is the <b>message</b>.',
                 to=['some@email.com', 'get@email.com'],
-                custom_args={
-                    'test_arg': 'test_value'
-                },
                 category='test_category'
             )
             for server in mocked_get_connection.call_args_list:
@@ -512,11 +470,10 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
                                           use_tls=email_server_2.email_use_tls,
                                           username=email_server_2.email_username)
 
-            emails = Emails.objects.all()
-            self.assertEqual(emails.count(), 2)
+            self.assertEqual(Emails.objects.count(), 1)
 
-            email_instance = emails[0]
-            self.assertEqual(email_instance.recipient, "['some@email.com']")
+            email_instance = Emails.objects.first()
+            self.assertEqual(email_instance.recipient, "['some@email.com', 'get@email.com']")
             self.assertEqual(email_instance.status, 'sent to user')
 
     def test_send_any_email_on_site_id_or_site_id_and_preferred(self, mocked_get_connection):
@@ -554,21 +511,14 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
                 subject='Subject here',
                 body='Here is the <b>message</b>.',
                 to=['some@email.com', 'some2@email_preferred.com', 'some3@data.ru', 'some4@email_preferred.com'],
-                custom_args={
-                    'test_arg': 'test_value'
-                },
                 category='test_category'
             )
         emails = Emails.objects.all()
         self.assertEqual(mocked_get_connection.call_args_list[0].kwargs['host'], email_server_2.email_host)
         self.assertEqual(mocked_get_connection.call_args_list[1].kwargs['host'], email_server_3.email_host)
-        self.assertEqual(mocked_get_connection.call_args_list[2].kwargs['host'], email_server_2.email_host)
-        self.assertEqual(mocked_get_connection.call_args_list[3].kwargs['host'], email_server_3.email_host)
-        self.assertEqual(emails.count(), 4)
-        self.assertEqual(emails[0].recipient, "['some@email.com']")
-        self.assertEqual(emails[1].recipient, "['some2@email_preferred.com']")
-        self.assertEqual(emails[2].recipient, "['some3@data.ru']")
-        self.assertEqual(emails[3].recipient, "['some4@email_preferred.com']")
+        self.assertEqual(emails.count(), 2)
+        self.assertEqual(emails[0].recipient, "['some@email.com', 'some3@data.ru']")
+        self.assertEqual(emails[1].recipient, "['some2@email_preferred.com', 'some4@email_preferred.com']")
 
     @override_settings(SITE_ID=3)
     def test_site_not_found(self, mocked_get_connection):
@@ -592,9 +542,6 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
                     subject='Subject here',
                     body='Here is the <b>message</b>.',
                     to=['some@email.com', 'some2@email_preferred.com', 'some3@data.ru', 'some4@email_preferred.com'],
-                    custom_args={
-                        'test_arg': 'test_value'
-                    },
                     category='test_category'
                 )
         self.assertEqual(Emails.objects.count(), 0)
@@ -634,22 +581,17 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
                 subject='Subject here',
                 body='Here is the <b>message</b>.',
                 to=['some@email.com', 'some2@email_preferred.com', 'some3@data.ru', 'some4@email_preferred.com'],
-                custom_args={
-                    'test_arg': 'test_value'
-                },
                 email_server=self.email_server,
                 category='test_category'
             )
-        emails = Emails.objects.all()
+        self.assertEqual(mocked_get_connection.call_count, 1)
         self.assertEqual(mocked_get_connection.call_args_list[0].kwargs['host'], self.email_server.email_host)
-        self.assertEqual(mocked_get_connection.call_args_list[1].kwargs['host'], self.email_server.email_host)
-        self.assertEqual(mocked_get_connection.call_args_list[2].kwargs['host'], self.email_server.email_host)
-        self.assertEqual(mocked_get_connection.call_args_list[3].kwargs['host'], self.email_server.email_host)
-        self.assertEqual(emails.count(), 4)
-        self.assertEqual(emails[0].recipient, "['some@email.com']")
-        self.assertEqual(emails[1].recipient, "['some2@email_preferred.com']")
-        self.assertEqual(emails[2].recipient, "['some3@data.ru']")
-        self.assertEqual(emails[3].recipient, "['some4@email_preferred.com']")
+        self.assertEqual(Emails.objects.count(), 1)
+        email = Emails.objects.first()
+        self.assertEqual(
+            email.recipient,
+            "['some@email.com', 'some2@email_preferred.com', 'some3@data.ru', 'some4@email_preferred.com']",
+        )
 
 
 @override_settings(DJNEWSLETTER_UNISENDER_URL='http://test.url')

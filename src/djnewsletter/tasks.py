@@ -20,14 +20,14 @@ def send_by_smtp(email_message):
         else:
             conn = get_connection(backend=BACKEND)
 
-        email_message.message.attachments.extend(
+        email_message.attachments.extend(
             email_message.inline_attachments
         )
-        for idx, attachment in enumerate(email_message.message.attachments):
+        for idx, attachment in enumerate(email_message.attachments):
             if isinstance(attachment, tuple) and len(attachment) == 3:
-                email_message.message.attachments[idx] = email_message.create_mime_attachment(*attachment)
+                email_message.attachments[idx] = email_message.create_mime_attachment(*attachment)
 
-        conn.send_messages([email_message.message])
+        conn.send_messages([email_message])
         email_message.email_instance.status = 'sent to user'
     except Exception as e:
         email_message.email_instance.status = str(e)
@@ -48,12 +48,12 @@ def send_by_unisender(email_message):
     )
     try:
         response_json = unisender_api.send(
-            subject=email_message.message.subject,
-            body_html=email_message.message.body,
-            from_email=email_message.message.from_email,
+            subject=email_message.subject,
+            body_html=email_message.body,
+            from_email=email_message.from_email,
             from_name=email_message.email_server.api_from_name,
             recipients=email_message.to,
-            attachments=email_message.message.attachments,
+            attachments=email_message.attachments,
             inline_attachments=email_message.inline_attachments,
         )
     except Exception as e:
