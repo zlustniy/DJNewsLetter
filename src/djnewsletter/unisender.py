@@ -5,6 +5,7 @@ import urllib.parse
 import requests
 from django.utils.encoding import force_text
 from django.utils.functional import Promise
+
 from djnewsletter.conf import settings
 
 
@@ -28,7 +29,8 @@ class UniSenderAPIClient(object):
             '/ru/transactional/api/v1/email/send.json',
         )
 
-    def _prepare_attachments(self, attachments):
+    @staticmethod
+    def _prepare_attachments(attachments):
         prepared_attachments = []
         for filename, content, mimetype in attachments:
             if not isinstance(content, bytes):
@@ -36,20 +38,21 @@ class UniSenderAPIClient(object):
             prepared_attachments.append({
                 'type': mimetype,
                 'name': filename,
-                'content': base64.b64encode(content).decode('utf-8')
+                'content': base64.b64encode(content).decode('utf-8'),
             })
         return prepared_attachments
 
-    def _send_request(self, url, json_data):
+    @staticmethod
+    def _send_request(url, json_data):
         json_string = json.dumps(json_data, cls=LazyEncoder)
-        r = requests.post(
+        response = requests.post(
             url=url,
             data=json_string,
             headers={
                 'Content-Type': 'application/json',
-            }
+            },
         )
-        response_json = r.json()
+        response_json = response.json()
         return response_json
 
     def send(self, subject, body_html, from_email, from_name, recipients, attachments, inline_attachments):
