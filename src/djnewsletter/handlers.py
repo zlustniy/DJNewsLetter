@@ -56,31 +56,52 @@ class BaseEmailMessageHandler:
         djnewsletter_email_message.copy_attributes_from_child_instance(self.email_message)
         self.email_message = djnewsletter_email_message
 
+    def get_email_servers(self, domain):
+        email_servers = []
+        if self.site is not None:
+            email_servers.extend([
+                EmailServers.objects.filter(
+                    is_active=True,
+                    sites=self.site,
+                    preferred_domains__domain=domain,
+                ),
+                EmailServers.objects.filter(
+                    is_active=True,
+                    sites=self.site,
+                ),
+            ])
+        email_servers.extend([
+            EmailServers.objects.filter(
+                is_active=True,
+                preferred_domains__domain=domain,
+                sites__isnull=True,
+            ),
+            EmailServers.objects.filter(
+                main=True,
+                is_active=True,
+                sites__isnull=True,
+            ),
+        ])
+        return email_servers
+
     def get_recipients_email_server_route(self):
         recipients_email_server_route = collections.defaultdict(list)
+        email_servers_for_domains_cache = {}
         for email in self.email_message.to:
             domain = email.split('@')[1]
-            email_server = next(email_server for email_server in [
-                EmailServers.objects.filter(
-                    is_active=True,
-                    sites=self.site,
-                    preferred_domains__domain=domain,
-                ).first(),
-                EmailServers.objects.filter(
-                    is_active=True,
-                    sites=self.site,
-                ).first(),
-                EmailServers.objects.filter(
-                    is_active=True,
-                    preferred_domains__domain=domain,
-                    sites__isnull=True,
-                ).first(),
-                EmailServers.objects.filter(
-                    main=True,
-                    is_active=True,
-                    sites__isnull=True,
-                ).first()
-            ] if email_server is not None)
+            cached_email_server_for_domain = email_servers_for_domains_cache.get(domain, None)
+            if cached_email_server_for_domain:
+                recipients_email_server_route[cached_email_server_for_domain].append(email)
+                continue
+
+            email_server = next(
+                (
+                    email_server.first() for email_server in self.get_email_servers(domain)
+                    if email_server.first() is not None
+                ),
+                None,
+            )
+
             if not email_server:
                 raise SuitableEmailServerNotFoundException(
                     'Ошибка выбора EmailServers для адреса: `{email}`'.format(
@@ -88,11 +109,14 @@ class BaseEmailMessageHandler:
                     )
                 )
             recipients_email_server_route[email_server].append(email)
+            email_servers_for_domains_cache[domain] = email_server
         return recipients_email_server_route
 
     @staticmethod
     def get_site():
-        return Site.objects.get_current()
+        if getattr(settings, 'SITE_ID', None):
+            return Site.objects.get_current()
+        return None
 
     def create_email(self, sender, recipients, status, used_server=None, save=True):
         email = Emails(

@@ -304,6 +304,7 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
             self.assertEqual(email_instance.recipient, "['some@email_2.com', 'some@email_3.com', 'some@email_4.com']")
             self.assertEqual(email_instance.status, "{'status': 'success'}")
 
+    @override_settings(SITE_ID=1)
     def test_send_email_to_first_server_with_site_id(self, mocked_get_connection):
         email_server_2 = EmailServers.objects.create(
             email_default_from='email_2@example.com',
@@ -356,6 +357,7 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
             self.assertEqual(email_instance.recipient, "['some@email.com']")
             self.assertEqual(email_instance.status, 'sent to user')
 
+    @override_settings(SITE_ID=1)
     def test_send_email_to_default_server_if_site_not_found_and_without_preferred_domains_and_default_server_without_site(
             self, mocked_get_connection):
         self.email_server.preferred_domains.clear()
@@ -411,6 +413,7 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
             self.assertEqual(email_instance.recipient, "['some@email.com']")
             self.assertEqual(email_instance.status, 'sent to user')
 
+    @override_settings(SITE_ID=1)
     def test_send_email_to_default_server_if_site_not_found_and_with_preferred_domains(self, mocked_get_connection):
         email_server_2 = EmailServers.objects.create(
             email_default_from='email_2@example.com',
@@ -464,6 +467,7 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
             self.assertEqual(email_instance.recipient, "['some@email.com']")
             self.assertEqual(email_instance.status, 'sent to user')
 
+    @override_settings(SITE_ID=1)
     def test_send_any_email_to_site(self, mocked_get_connection):
         email_server_2 = EmailServers.objects.create(
             email_default_from='email_2@example.com',
@@ -516,6 +520,7 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
             self.assertEqual(email_instance.recipient, "['some@email.com', 'get@email.com']")
             self.assertEqual(email_instance.status, 'sent to user')
 
+    @override_settings(SITE_ID=1)
     def test_send_any_email_on_site_id_or_site_id_and_preferred(self, mocked_get_connection):
         email_server_2 = EmailServers.objects.create(
             email_default_from='email_2@example.com',
@@ -586,6 +591,7 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
                 )
         self.assertEqual(Emails.objects.count(), 0)
 
+    @override_settings(SITE_ID=1)
     def test_ignore_site_id_if_server_in_email(self, mocked_get_connection):
         email_server_2 = EmailServers.objects.create(
             email_default_from='email_2@example.com',

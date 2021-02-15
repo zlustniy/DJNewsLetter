@@ -46,8 +46,6 @@ DATABASES = {
     }
 }
 
-SITE_ID = 1
-
 SECRET_KEY = 'something-something'
 
 from celery import Celery
