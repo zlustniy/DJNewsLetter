@@ -45,7 +45,9 @@ class DJNewsLetterEmailMessage(EmailMessage):
         self.template = template
         self.context = context or {}
         self.newsletter = newsletter
-        self.inline_attachments = inline_attachments or []
+        if inline_attachments is None:
+            inline_attachments = []
+        self.inline_attachments = inline_attachments
         self.countdown = countdown
         self.eta = eta
         self.recipients_email_server_route = {}

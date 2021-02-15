@@ -12,62 +12,31 @@ from djnewsletter.analytics import Analytics
 from djnewsletter.helpers import send_email
 from djnewsletter.mail import DJNewsLetterEmailMessage
 from djnewsletter.models import Emails, EmailServers, Domains, Bounced
+from djnewsletter.tests.mixins import EmailTestsMixin
 from djnewsletter.unisender import UniSenderAPIClient
 
 
-class SimpleEmailTest(TestCase):
+class SimpleEmailTest(TestCase, EmailTestsMixin):
     def test_send_email(self):
-        mail.send_mail(
-            subject='Subject here',
-            message='Here is the <b>message</b>',
-            from_email='from@example.com',
-            recipient_list=['some@email.com'],
-            fail_silently=False,
-        )
-
+        self.send_simple_mail()
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].subject, 'Subject here')
         self.assertEqual(Emails.objects.count(), 0)
 
-
-@override_settings(
-    EMAIL_BACKEND='djnewsletter.backends.EmailBackend'
-)
-@mock.patch('djnewsletter.tasks.get_connection')
-class SimpleEmailTest1(TestCase):
-    @classmethod
-    def setUpTestData(cls):
-        domain = Domains.objects.create(domain='email.com')
-        cls.email_server = EmailServers.objects.create(
-            email_default_from='email@example.com',
-            email_host='some host',
-            email_port=1234,
-            email_username='lame',
-            email_password='123',
-            email_use_ssl=True,
-            email_fail_silently=True,
-            email_timeout=50,
-            sending_method='smtp',
-            is_active=True
-        )
-        cls.email_server.preferred_domains.add(domain)
-
-    def test_send_email(self, mocked_get_connection):
+    @override_settings(EMAIL_BACKEND='djnewsletter.backends.EmailBackend')
+    @mock.patch('djnewsletter.tasks.get_connection')
+    def test_send_email_djnewsletter_backend(self, mocked_get_connection):
+        email_server = self.create_email_server()
+        self.add_preferred_domain('email.com', email_server)
         with mock.patch.object(transaction, 'on_commit', lambda f: f()):
-            mail.send_mail(
-                subject='Subject here',
-                message='Here is the <b>message</b>',
-                from_email='from@example.com',
+            self.send_simple_mail(
+                subject='Test simple mail subject',
                 recipient_list=['some@email.com'],
-                fail_silently=False,
             )
-            mocked_get_connection.assert_called_once_with(backend='django.core.mail.backends.smtp.EmailBackend',
-                                                          fail_silently=True, host='some host', password='123',
-                                                          port=1234, timeout=50, use_ssl=True, use_tls=False,
-                                                          username='lame')
             self.assertEqual(Emails.objects.count(), 1)
             email = Emails.objects.first()
-            self.assertEqual(email.subject, 'Subject here')
+            self.assertEqual(email.subject, 'Test simple mail subject')
+            self.assertEqual(email.recipient, '[\'some@email.com\']')
 
 
 class DummyBackendDJNewsletterEmailMessageTests(TestCase):
