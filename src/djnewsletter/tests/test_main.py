@@ -35,7 +35,23 @@ class SimpleEmailTest(TestCase):
 )
 @mock.patch('djnewsletter.tasks.get_connection')
 class SimpleEmailTest1(TestCase):
-    # TODO!
+    @classmethod
+    def setUpTestData(cls):
+        domain = Domains.objects.create(domain='email.com')
+        cls.email_server = EmailServers.objects.create(
+            email_default_from='email@example.com',
+            email_host='some host',
+            email_port=1234,
+            email_username='lame',
+            email_password='123',
+            email_use_ssl=True,
+            email_fail_silently=True,
+            email_timeout=50,
+            sending_method='smtp',
+            is_active=True
+        )
+        cls.email_server.preferred_domains.add(domain)
+
     def test_send_email(self, mocked_get_connection):
         with mock.patch.object(transaction, 'on_commit', lambda f: f()):
             mail.send_mail(
@@ -45,10 +61,13 @@ class SimpleEmailTest1(TestCase):
                 recipient_list=['some@email.com'],
                 fail_silently=False,
             )
-
-            self.assertEqual(len(mail.outbox), 1)
-            self.assertEqual(mail.outbox[0].subject, 'Subject here')
-            self.assertEqual(Emails.objects.count(), 0)
+            mocked_get_connection.assert_called_once_with(backend='django.core.mail.backends.smtp.EmailBackend',
+                                                          fail_silently=True, host='some host', password='123',
+                                                          port=1234, timeout=50, use_ssl=True, use_tls=False,
+                                                          username='lame')
+            self.assertEqual(Emails.objects.count(), 1)
+            email = Emails.objects.first()
+            self.assertEqual(email.subject, 'Subject here')
 
 
 class DummyBackendDJNewsletterEmailMessageTests(TestCase):

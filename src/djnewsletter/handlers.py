@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 
 from django.conf import settings
 from django.contrib.sites.models import Site
+from django.core.mail import EmailMultiAlternatives
 
 from .exceptions import (
     SuitableEmailServerNotFoundException,
@@ -30,6 +31,7 @@ class DJNewsLetterSendingHandlers:
         """
         self.handlers = {
             DJNewsLetterEmailMessage: DJNewsLetterEmailMessageHandler,
+            EmailMultiAlternatives: EmailMultiAlternativesHandler,
         }
 
     def get_handler(self, email_message):
@@ -44,6 +46,15 @@ class BaseEmailMessageHandler:
 
     def handle(self):
         raise NotImplementedError
+
+    def handle_email_server(self):
+        recipients_email_server_route = self.get_recipients_email_server_route()
+        self.email_message.recipients_email_server_route = recipients_email_server_route
+
+    def unify_email_message(self):
+        djnewsletter_email_message = DJNewsLetterEmailMessage()
+        djnewsletter_email_message.copy_attributes_from_child_instance(self.email_message)
+        self.email_message = djnewsletter_email_message
 
     def get_recipients_email_server_route(self):
         recipients_email_server_route = collections.defaultdict(list)
@@ -101,35 +112,34 @@ class BaseEmailMessageHandler:
 
 class DefaultEmailMessageHandler(BaseEmailMessageHandler):
     def handle(self):
+        self.unify_email_message()
         self.handle_email_server()
         return self.email_message
 
-    def handle_email_server(self):
-        recipients_email_server_route = self.get_recipients_email_server_route()
-        # setattr(self.email_message, 'email_server', None)
-        # setattr(self.email_message, 'recipients_email_server_route', recipients_email_server_route)
+
+class EmailMultiAlternativesHandler(BaseEmailMessageHandler):
+    def handle(self):
+        self.rewrite_content_subtype_and_body()
+        self.unify_email_message()
+        self.handle_email_server()
+        return self.email_message
+
+    def rewrite_content_subtype_and_body(self):
+        """Работа с alternative content types."""
+        for body, content_subtype in self.email_message.alternatives:
+            if content_subtype == 'text/html':
+                self.email_message.content_subtype = 'html'
+                self.email_message.body = body
+                break
 
 
 class DJNewsLetterEmailMessageHandler(BaseEmailMessageHandler):
     def handle(self):
-        self.rewrite_content_subtype_and_body()
         self.handle_bounced()
         self.handle_unsubscribe()
         self.handle_interval_sending()
         self.handle_email_server()
         return self.email_message
-
-    def rewrite_content_subtype_and_body(self):
-        """
-        Работа с alternative content types.
-        :param message:
-        :return:
-        """
-        if self.email_message.content_subtype != 'html':
-            for body, content_subtype in getattr(self.email_message.message, 'alternatives', []):
-                if content_subtype == 'text/html':
-                    setattr(self.email_message.message, 'content_subtype', 'html')
-                    setattr(self.email_message.message, 'body', body)
 
     def handle_bounced(self):
         if self.email_message.newsletter:
@@ -196,4 +206,4 @@ class DJNewsLetterEmailMessageHandler(BaseEmailMessageHandler):
             }
             return
 
-        self.email_message.recipients_email_server_route = self.get_recipients_email_server_route()
+        super(DJNewsLetterEmailMessageHandler, self).handle_email_server()

@@ -6,7 +6,6 @@ from django.db import transaction
 from .handlers import (
     DJNewsLetterSendingHandlers,
 )
-from .mail import DJNewsLetterEmailMessage
 from .options import (
     DJNewsLetterSendingMethodOptions,
 )
@@ -29,17 +28,8 @@ class DJNewsletterBackend(BaseEmailBackend):
             email_message.email_instance.status = str(e)
             email_message.email_instance.save()
 
-    @staticmethod
-    def unify_email_message(message):
-        if not isinstance(message, DJNewsLetterEmailMessage):
-            djnewsletter_email_message = DJNewsLetterEmailMessage()
-            djnewsletter_email_message.copy_attributes_from_child_instance(message)
-            return djnewsletter_email_message
-        return message
-
     def send_messages(self, email_messages):
         for email_message in email_messages:
-            email_message = self.unify_email_message(email_message)
             with transaction.atomic():
                 message_handler = DJNewsLetterSendingHandlers().get_handler(email_message)
                 email_message = message_handler.handle()
