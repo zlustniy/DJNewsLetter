@@ -6,7 +6,6 @@ from django.core import mail
 from django.db import transaction
 from django.test import TestCase
 from django.test.utils import override_settings
-from django.utils.translation import gettext_lazy as _
 
 from djnewsletter.analytics import Analytics
 from djnewsletter.helpers import send_email
@@ -88,10 +87,17 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
                 category='test_category'
             )
 
-            mocked_get_connection.assert_called_once_with(backend='django.core.mail.backends.smtp.EmailBackend',
-                                                          fail_silently=True, host='some host', password='123',
-                                                          port=1234, timeout=50, use_ssl=True, use_tls=False,
-                                                          username='lame')
+            mocked_get_connection.assert_called_once_with(
+                backend='django.core.mail.backends.smtp.EmailBackend',
+                fail_silently=True,
+                host='some host',
+                password='123',
+                port=1234,
+                timeout=50,
+                use_ssl=True,
+                use_tls=False,
+                username='lame',
+            )
 
             emails = Emails.objects.all()
             self.assertEqual(emails.count(), 1)
@@ -113,10 +119,17 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
                 category='test_category'
             )
 
-            mocked_get_connection.assert_called_once_with(backend='django.core.mail.backends.smtp.EmailBackend',
-                                                          fail_silently=True, host='some host', password='123',
-                                                          port=1234, timeout=50, use_ssl=True, use_tls=False,
-                                                          username='lame')
+            mocked_get_connection.assert_called_once_with(
+                backend='django.core.mail.backends.smtp.EmailBackend',
+                fail_silently=True,
+                host='some host',
+                password='123',
+                port=1234,
+                timeout=50,
+                use_ssl=True,
+                use_tls=False,
+                username='lame',
+            )
 
             emails = Emails.objects.all()
             self.assertEqual(emails.count(), 1)
@@ -139,7 +152,7 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
             email_fail_silently=True,
             email_timeout=50,
             sending_method='smtp',
-            is_active=True
+            is_active=True,
         )
         email_server_2.preferred_domains.add(domain_2)
         email_server_2.preferred_domains.add(domain_3)
@@ -151,7 +164,7 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
                 body='Here is the <b>message</b>.',
                 to=['some@email.com', 'some@email_2.com', 'some@email_3.com', 'some@email_4.com'],
                 category='test_category',
-                newsletter='newsletter title'
+                newsletter='newsletter title',
             )
             message = DJNewsLetterEmailMessage(**kw)
             message.send()
@@ -186,14 +199,26 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
 
             mocked_get_connection.call_args_list[2].assert_called_with(
                 backend='django.core.mail.backends.smtp.EmailBackend',
-                fail_silently=True, host='some host', password='123',
-                port=1234, timeout=50, use_ssl=True, use_tls=False,
-                username='lame')
+                fail_silently=True,
+                host='some host',
+                password='123',
+                port=1234,
+                timeout=50,
+                use_ssl=True,
+                use_tls=False,
+                username='lame',
+            )
             mocked_get_connection.call_args_list[3].assert_called_with(
                 backend='django.core.mail.backends.smtp.EmailBackend',
-                fail_silently=True, host='some host email_2', password='email_2',
-                port=1234, timeout=50, use_ssl=True, use_tls=False,
-                username='email_2')
+                fail_silently=True,
+                host='some host email_2',
+                password='email_2',
+                port=1234,
+                timeout=50,
+                use_ssl=True,
+                use_tls=False,
+                username='email_2',
+            )
 
             email_instance = Emails.objects.get(sender='email@example.com')
             self.assertEqual(email_instance.recipient, "['some@email.com']")
@@ -215,7 +240,7 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
             api_username='api_username',
             api_from_email='from_unisender',
             sending_method='unisender_api',
-            is_active=True
+            is_active=True,
         )
         email_server_2.preferred_domains.add(domain_2)
         email_server_2.preferred_domains.add(domain_3)
@@ -227,7 +252,7 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
                 body='Here is the <b>message</b>.',
                 to=['some@email.com', 'some@email_2.com', 'some@email_3.com', 'some@email_4.com'],
                 category='test_category',
-                newsletter='newsletter title'
+                newsletter='newsletter title',
             )
             message = DJNewsLetterEmailMessage(**kw)
             message.send()
@@ -285,7 +310,7 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
             email_fail_silently=True,
             email_timeout=60,
             sending_method='smtp',
-            is_active=True
+            is_active=True,
         )
         email_server_3 = EmailServers.objects.create(
             email_default_from='email_3@example.com',
@@ -297,7 +322,7 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
             email_fail_silently=True,
             email_timeout=60,
             sending_method='smtp',
-            is_active=True
+            is_active=True,
         )
         site = Site.objects.get_current()
         email_server_2.sites.add(site)
@@ -307,17 +332,19 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
                 subject='Subject here',
                 body='Here is the <b>message</b>.',
                 to=['some@email.com'],
-                category='test_category'
+                category='test_category',
             )
-            mocked_get_connection.assert_called_once_with(backend='django.core.mail.backends.smtp.EmailBackend',
-                                                          fail_silently=email_server_2.email_fail_silently,
-                                                          host=email_server_2.email_host,
-                                                          password=email_server_2.email_password,
-                                                          port=email_server_2.email_port,
-                                                          timeout=email_server_2.email_timeout,
-                                                          use_ssl=email_server_2.email_use_ssl,
-                                                          use_tls=email_server_2.email_use_tls,
-                                                          username=email_server_2.email_username)
+            mocked_get_connection.assert_called_once_with(
+                backend='django.core.mail.backends.smtp.EmailBackend',
+                fail_silently=email_server_2.email_fail_silently,
+                host=email_server_2.email_host,
+                password=email_server_2.email_password,
+                port=email_server_2.email_port,
+                timeout=email_server_2.email_timeout,
+                use_ssl=email_server_2.email_use_ssl,
+                use_tls=email_server_2.email_use_tls,
+                username=email_server_2.email_username,
+            )
 
             emails = Emails.objects.all()
             self.assertEqual(emails.count(), 1)
@@ -327,8 +354,9 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
             self.assertEqual(email_instance.status, 'sent to user')
 
     @override_settings(SITE_ID=1)
-    def test_send_email_to_default_server_if_site_not_found_and_without_preferred_domains_and_default_server_without_site(
-            self, mocked_get_connection):
+    def test_send_email_if_site_not_found_and_without_preferred_domains_and_default_server_without_site(
+            self, mocked_get_connection,
+    ):
         self.email_server.preferred_domains.clear()
         email_server_2 = EmailServers.objects.create(
             email_default_from='email_2@example.com',
@@ -340,7 +368,7 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
             email_fail_silently=True,
             email_timeout=60,
             sending_method='smtp',
-            is_active=False
+            is_active=False,
         )
         site = Site.objects.get_current()
         email_server_2.sites.add(site)
@@ -356,7 +384,7 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
             email_timeout=70,
             sending_method='smtp',
             is_active=True,
-            main=True
+            main=True,
         )
 
         with mock.patch.object(transaction, 'on_commit', lambda f: f()):
@@ -364,17 +392,19 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
                 subject='Subject here',
                 body='Here is the <b>message</b>.',
                 to=['some@email.com'],
-                category='test_category'
+                category='test_category',
             )
-            mocked_get_connection.assert_called_once_with(backend='django.core.mail.backends.smtp.EmailBackend',
-                                                          fail_silently=email_server3.email_fail_silently,
-                                                          host=email_server3.email_host,
-                                                          password=email_server3.email_password,
-                                                          port=email_server3.email_port,
-                                                          timeout=email_server3.email_timeout,
-                                                          use_ssl=email_server3.email_use_ssl,
-                                                          use_tls=email_server3.email_use_tls,
-                                                          username=email_server3.email_username)
+            mocked_get_connection.assert_called_once_with(
+                backend='django.core.mail.backends.smtp.EmailBackend',
+                fail_silently=email_server3.email_fail_silently,
+                host=email_server3.email_host,
+                password=email_server3.email_password,
+                port=email_server3.email_port,
+                timeout=email_server3.email_timeout,
+                use_ssl=email_server3.email_use_ssl,
+                use_tls=email_server3.email_use_tls,
+                username=email_server3.email_username,
+            )
             emails = Emails.objects.all()
             self.assertEqual(emails.count(), 1)
 
@@ -394,7 +424,7 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
             email_fail_silently=True,
             email_timeout=60,
             sending_method='smtp',
-            is_active=False
+            is_active=False,
         )
         site = Site.objects.get_current()
         email_server_2.sites.add(site)
@@ -410,7 +440,7 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
             email_timeout=70,
             sending_method='smtp',
             is_active=True,
-            main=True
+            main=True,
         )
 
         with mock.patch.object(transaction, 'on_commit', lambda f: f()):
@@ -418,17 +448,19 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
                 subject='Subject here',
                 body='Here is the <b>message</b>.',
                 to=['some@email.com'],
-                category='test_category'
+                category='test_category',
             )
-            mocked_get_connection.assert_called_once_with(backend='django.core.mail.backends.smtp.EmailBackend',
-                                                          fail_silently=self.email_server.email_fail_silently,
-                                                          host=self.email_server.email_host,
-                                                          password=self.email_server.email_password,
-                                                          port=self.email_server.email_port,
-                                                          timeout=self.email_server.email_timeout,
-                                                          use_ssl=self.email_server.email_use_ssl,
-                                                          use_tls=self.email_server.email_use_tls,
-                                                          username=self.email_server.email_username)
+            mocked_get_connection.assert_called_once_with(
+                backend='django.core.mail.backends.smtp.EmailBackend',
+                fail_silently=self.email_server.email_fail_silently,
+                host=self.email_server.email_host,
+                password=self.email_server.email_password,
+                port=self.email_server.email_port,
+                timeout=self.email_server.email_timeout,
+                use_ssl=self.email_server.email_use_ssl,
+                use_tls=self.email_server.email_use_tls,
+                username=self.email_server.email_username,
+            )
             emails = Emails.objects.all()
             self.assertEqual(emails.count(), 1)
 
@@ -448,7 +480,7 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
             email_fail_silently=True,
             email_timeout=60,
             sending_method='smtp',
-            is_active=True
+            is_active=True,
         )
         email_server_3 = EmailServers.objects.create(
             email_default_from='email_3@example.com',
@@ -460,7 +492,7 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
             email_fail_silently=True,
             email_timeout=60,
             sending_method='smtp',
-            is_active=True
+            is_active=True,
         )
         site = Site.objects.get_current()
         email_server_2.sites.add(site)
@@ -470,18 +502,20 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
                 subject='Subject here',
                 body='Here is the <b>message</b>.',
                 to=['some@email.com', 'get@email.com'],
-                category='test_category'
+                category='test_category',
             )
             for server in mocked_get_connection.call_args_list:
-                server.assert_called_with(backend='django.core.mail.backends.smtp.EmailBackend',
-                                          fail_silently=email_server_2.email_fail_silently,
-                                          host=email_server_2.email_host,
-                                          password=email_server_2.email_password,
-                                          port=email_server_2.email_port,
-                                          timeout=email_server_2.email_timeout,
-                                          use_ssl=email_server_2.email_use_ssl,
-                                          use_tls=email_server_2.email_use_tls,
-                                          username=email_server_2.email_username)
+                server.assert_called_with(
+                    backend='django.core.mail.backends.smtp.EmailBackend',
+                    fail_silently=email_server_2.email_fail_silently,
+                    host=email_server_2.email_host,
+                    password=email_server_2.email_password,
+                    port=email_server_2.email_port,
+                    timeout=email_server_2.email_timeout,
+                    use_ssl=email_server_2.email_use_ssl,
+                    use_tls=email_server_2.email_use_tls,
+                    username=email_server_2.email_username,
+                )
 
             self.assertEqual(Emails.objects.count(), 1)
 
@@ -501,7 +535,7 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
             email_fail_silently=True,
             email_timeout=60,
             sending_method='smtp',
-            is_active=True
+            is_active=True,
         )
         email_server_3 = EmailServers.objects.create(
             email_default_from='email_3@example.com',
@@ -513,7 +547,7 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
             email_fail_silently=True,
             email_timeout=60,
             sending_method='smtp',
-            is_active=True
+            is_active=True,
         )
         site = Site.objects.get_current()
         email_server_2.sites.add(site)
@@ -525,7 +559,7 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
                 subject='Subject here',
                 body='Here is the <b>message</b>.',
                 to=['some@email.com', 'some2@email_preferred.com', 'some3@data.ru', 'some4@email_preferred.com'],
-                category='test_category'
+                category='test_category',
             )
         emails = Emails.objects.all()
         self.assertEqual(mocked_get_connection.call_args_list[0].kwargs['host'], email_server_2.email_host)
@@ -546,7 +580,7 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
             email_fail_silently=True,
             email_timeout=60,
             sending_method='smtp',
-            is_active=True
+            is_active=True,
         )
         site = Site.objects.get(id=1)
         email_server_2.sites.add(site)
@@ -556,7 +590,7 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
                     subject='Subject here',
                     body='Here is the <b>message</b>.',
                     to=['some@email.com', 'some2@email_preferred.com', 'some3@data.ru', 'some4@email_preferred.com'],
-                    category='test_category'
+                    category='test_category',
                 )
         self.assertEqual(Emails.objects.count(), 0)
 
@@ -572,7 +606,7 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
             email_fail_silently=True,
             email_timeout=60,
             sending_method='smtp',
-            is_active=True
+            is_active=True,
         )
         email_server_3 = EmailServers.objects.create(
             email_default_from='email_3@example.com',
@@ -584,7 +618,7 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
             email_fail_silently=True,
             email_timeout=60,
             sending_method='smtp',
-            is_active=True
+            is_active=True,
         )
         site = Site.objects.get_current()
         email_server_2.sites.add(site)
@@ -597,7 +631,7 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
                 body='Here is the <b>message</b>.',
                 to=['some@email.com', 'some2@email_preferred.com', 'some3@data.ru', 'some4@email_preferred.com'],
                 email_server=self.email_server,
-                category='test_category'
+                category='test_category',
             )
         self.assertEqual(mocked_get_connection.call_count, 1)
         self.assertEqual(mocked_get_connection.call_args_list[0].kwargs['host'], self.email_server.email_host)
@@ -619,7 +653,7 @@ class UniSenderAPIClientTestCase(TestCase):
         )
 
         unisender_api.send(
-            subject=_('тест'),
+            subject='тест',
             body_html='body',
             from_email='example@email.com',
             from_name='from_name',
@@ -658,7 +692,7 @@ class AnalyticsTests(TestCase):
             body='body',
             subject='subject',
             used_server=email_server,
-            status=status
+            status=status,
         )
 
     def _shift_create_datetime(self, email, days_offset):
@@ -674,7 +708,7 @@ class AnalyticsTests(TestCase):
         unisender_response = {
             'job_id': 'xxx-xxx',
             'status': 'success',
-            'emails': self.recipient
+            'emails': self.recipient,
         }
         email_6_day_ago = self._create_email(self.unisender, self.recipient, str(unisender_response))
         self._shift_create_datetime(email_6_day_ago, 6)
@@ -707,7 +741,7 @@ class AnalyticsTests(TestCase):
         self._create_email(self.unisender, self.recipient, str({
             'job_id': 'xxx-xxx',
             'status': 'success',
-            'emails': self.recipient
+            'emails': self.recipient,
         }))
         self._create_email(self.unisender, self.recipient, str({
             'job_id': 'xxx-xxx',
@@ -717,8 +751,8 @@ class AnalyticsTests(TestCase):
             'status': 'success',
             'emails': '[email2@email.com]',
             'failed_emails': {
-                'email@email.com': 'unsubscribed'
-            }
+                'email@email.com': 'unsubscribed',
+            },
         }))
         analytics = Analytics(['today'])
         excepted_today_dict = {
