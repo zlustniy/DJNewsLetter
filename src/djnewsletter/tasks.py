@@ -1,14 +1,14 @@
 from celery.task import task, current
-from django.conf import settings
 from django.core.mail import get_connection
 
+from .conf import (
+    BACKEND,
+    MAX_RETRIES,
+    COUNTDOWN,
+)
 from .unisender import (
     UniSenderAPIClient,
 )
-
-MAX_RETRIES = 5
-COUNTDOWN = 60  # seconds
-BACKEND = getattr(settings, 'CELERY_EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
 
 
 @task(queue='emails', time_limit=300)

@@ -21,7 +21,8 @@ class EmailServersAdminForm(forms.ModelForm):
             self.add_error('sites', error_message)
             self.add_error('is_active', error_message)
             raise forms.ValidationError(
-                "Основной актвиный сервер не может быть привязан к сайту, Деактивируйте сервер или назначьте другой"
-                " сервер основным или уберите привязку к сайту")
+                "Основной активный сервер не может быть привязан к сайту, Деактивируйте сервер или назначьте другой"
+                " сервер основным или уберите привязку к сайту"
+            )
 
         return self.cleaned_data

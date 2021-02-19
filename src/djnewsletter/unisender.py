@@ -75,7 +75,7 @@ class UniSenderAPIClient(object):
         message = {
             'api_key': self.api_key,
             'username': self.username,
-            'message': message_data
+            'message': message_data,
         }
 
         return self._send_request(
