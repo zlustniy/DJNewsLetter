@@ -25,7 +25,7 @@ class SimpleEmailTest(TestCase, EmailTestsMixin):
     @override_settings(EMAIL_BACKEND='djnewsletter.backends.EmailBackend')
     @mock.patch('djnewsletter.tasks.get_connection')
     def test_send_email_djnewsletter_backend(self, mocked_get_connection):
-        email_server = self.create_email_server()
+        email_server = self.create_smtp_email_server()
         self.add_preferred_domain('email.com', email_server)
         with mock.patch.object(transaction, 'on_commit', lambda f: f()):
             self.send_simple_mail(
@@ -59,22 +59,11 @@ class DummyBackendDJNewsletterEmailMessageTests(TestCase):
     EMAIL_BACKEND='djnewsletter.backends.EmailBackend'
 )
 @mock.patch('djnewsletter.tasks.get_connection')
-class EmailBackendDJNewsletterEmailMessageTests(TestCase):
+class EmailBackendDJNewsletterEmailMessageTests(TestCase, EmailTestsMixin):
     @classmethod
     def setUpTestData(cls):
         domain = Domains.objects.create(domain='email.com')
-        cls.email_server = EmailServers.objects.create(
-            email_default_from='email@example.com',
-            email_host='some host',
-            email_port=1234,
-            email_username='lame',
-            email_password='123',
-            email_use_ssl=True,
-            email_fail_silently=True,
-            email_timeout=50,
-            sending_method='smtp',
-            is_active=True
-        )
+        cls.email_server = cls.create_smtp_email_server()
         cls.email_server.preferred_domains.add(domain)
 
     def test_send_email(self, mocked_get_connection):
@@ -88,15 +77,7 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
             )
 
             mocked_get_connection.assert_called_once_with(
-                backend='django.core.mail.backends.smtp.EmailBackend',
-                fail_silently=True,
-                host='some host',
-                password='123',
-                port=1234,
-                timeout=50,
-                use_ssl=True,
-                use_tls=False,
-                username='lame',
+                **self.get_mock_called(),
             )
 
             emails = Emails.objects.all()
@@ -120,15 +101,7 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
             )
 
             mocked_get_connection.assert_called_once_with(
-                backend='django.core.mail.backends.smtp.EmailBackend',
-                fail_silently=True,
-                host='some host',
-                password='123',
-                port=1234,
-                timeout=50,
-                use_ssl=True,
-                use_tls=False,
-                username='lame',
+                **self.get_mock_called(),
             )
 
             emails = Emails.objects.all()
@@ -142,17 +115,11 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
         domain_2 = Domains.objects.create(domain='email_2.com')
         domain_3 = Domains.objects.create(domain='email_3.com')  # Bounced
         domain_4 = Domains.objects.create(domain='email_4.com')
-        email_server_2 = EmailServers.objects.create(
+        email_server_2 = self.create_smtp_email_server(
             email_default_from='email_2@example.com',
-            email_host='some host email_2',
-            email_port=1234,
-            email_username='email_2',
-            email_password='email_2',
-            email_use_ssl=True,
-            email_fail_silently=True,
-            email_timeout=50,
-            sending_method='smtp',
-            is_active=True,
+            email_host='email_host_2',
+            email_username='email_username_2',
+            email_password='email_password_2',
         )
         email_server_2.preferred_domains.add(domain_2)
         email_server_2.preferred_domains.add(domain_3)
@@ -171,15 +138,15 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
 
             self.assertEqual(mocked_get_connection.call_count, 2)
             mocked_get_connection.call_args_list[0].assert_called_with(
-                backend='django.core.mail.backends.smtp.EmailBackend',
-                fail_silently=True, host='some host', password='123',
-                port=1234, timeout=50, use_ssl=True, use_tls=False,
-                username='lame')
+                **self.get_mock_called(),
+            )
             mocked_get_connection.call_args_list[1].assert_called_with(
-                backend='django.core.mail.backends.smtp.EmailBackend',
-                fail_silently=True, host='some host email_2', password='email_2',
-                port=1234, timeout=50, use_ssl=True, use_tls=False,
-                username='email_2')
+                **self.get_mock_called(
+                    host='email_host_2',
+                    username='email_username_2',
+                    password='email_password_2',
+                )
+            )
 
             self.assertEqual(Emails.objects.all().count(), 3)
             email_instance = Emails.objects.get(sender='email@example.com')
@@ -198,26 +165,14 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
             self.assertEqual(Emails.objects.all().count(), 2)
 
             mocked_get_connection.call_args_list[2].assert_called_with(
-                backend='django.core.mail.backends.smtp.EmailBackend',
-                fail_silently=True,
-                host='some host',
-                password='123',
-                port=1234,
-                timeout=50,
-                use_ssl=True,
-                use_tls=False,
-                username='lame',
+                **self.get_mock_called(),
             )
             mocked_get_connection.call_args_list[3].assert_called_with(
-                backend='django.core.mail.backends.smtp.EmailBackend',
-                fail_silently=True,
-                host='some host email_2',
-                password='email_2',
-                port=1234,
-                timeout=50,
-                use_ssl=True,
-                use_tls=False,
-                username='email_2',
+                **self.get_mock_called(
+                    host='email_host_2',
+                    username='email_username_2',
+                    password='email_password_2',
+                )
             )
 
             email_instance = Emails.objects.get(sender='email@example.com')
@@ -235,13 +190,7 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
         domain_2 = Domains.objects.create(domain='email_2.com')
         domain_3 = Domains.objects.create(domain='email_3.com')  # Bounced
         domain_4 = Domains.objects.create(domain='email_4.com')
-        email_server_2 = EmailServers.objects.create(
-            api_key='api_key',
-            api_username='api_username',
-            api_from_email='from_unisender',
-            sending_method='unisender_api',
-            is_active=True,
-        )
+        email_server_2 = self.create_unisender_email_server()
         email_server_2.preferred_domains.add(domain_2)
         email_server_2.preferred_domains.add(domain_3)
         email_server_2.preferred_domains.add(domain_4)
@@ -300,29 +249,17 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
 
     @override_settings(SITE_ID=1)
     def test_send_email_to_first_server_with_site_id(self, mocked_get_connection):
-        email_server_2 = EmailServers.objects.create(
+        email_server_2 = self.create_smtp_email_server(
             email_default_from='email_2@example.com',
-            email_host='some host email_2',
-            email_port=1230,
-            email_username='email_2',
-            email_password='email_2',
-            email_use_ssl=True,
-            email_fail_silently=True,
-            email_timeout=60,
-            sending_method='smtp',
-            is_active=True,
+            email_host='email_host_2',
+            email_username='email_username_2',
+            email_password='email_password_2',
         )
-        email_server_3 = EmailServers.objects.create(
+        email_server_3 = self.create_smtp_email_server(
             email_default_from='email_3@example.com',
-            email_host='some host email_3',
-            email_port=1230,
-            email_username='email_3',
-            email_password='email_3',
-            email_use_ssl=True,
-            email_fail_silently=True,
-            email_timeout=60,
-            sending_method='smtp',
-            is_active=True,
+            email_host='email_host_3',
+            email_username='email_username_3',
+            email_password='email_password_3',
         )
         site = Site.objects.get_current()
         email_server_2.sites.add(site)
@@ -358,32 +295,21 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
             self, mocked_get_connection,
     ):
         self.email_server.preferred_domains.clear()
-        email_server_2 = EmailServers.objects.create(
+        email_server_2 = self.create_smtp_email_server(
             email_default_from='email_2@example.com',
-            email_host='some host email_2',
-            email_port=1230,
-            email_username='email_2',
-            email_password='email_2',
-            email_use_ssl=True,
-            email_fail_silently=True,
-            email_timeout=60,
-            sending_method='smtp',
+            email_host='email_host_2',
+            email_username='email_username_2',
+            email_password='email_password_2',
             is_active=False,
         )
         site = Site.objects.get_current()
         email_server_2.sites.add(site)
 
-        email_server3 = EmailServers.objects.create(
-            email_default_from='email3@example.com',
-            email_host='some email_server3',
-            email_port=4321,
-            email_username='lameemail_server3',
-            email_password='4321',
-            email_use_ssl=True,
-            email_fail_silently=True,
-            email_timeout=70,
-            sending_method='smtp',
-            is_active=True,
+        email_server_3 = self.create_smtp_email_server(
+            email_default_from='email_3@example.com',
+            email_host='email_host_3',
+            email_username='email_username_3',
+            email_password='email_password_3',
             main=True,
         )
 
@@ -396,14 +322,14 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
             )
             mocked_get_connection.assert_called_once_with(
                 backend='django.core.mail.backends.smtp.EmailBackend',
-                fail_silently=email_server3.email_fail_silently,
-                host=email_server3.email_host,
-                password=email_server3.email_password,
-                port=email_server3.email_port,
-                timeout=email_server3.email_timeout,
-                use_ssl=email_server3.email_use_ssl,
-                use_tls=email_server3.email_use_tls,
-                username=email_server3.email_username,
+                fail_silently=email_server_3.email_fail_silently,
+                host=email_server_3.email_host,
+                password=email_server_3.email_password,
+                port=email_server_3.email_port,
+                timeout=email_server_3.email_timeout,
+                use_ssl=email_server_3.email_use_ssl,
+                use_tls=email_server_3.email_use_tls,
+                username=email_server_3.email_username,
             )
             emails = Emails.objects.all()
             self.assertEqual(emails.count(), 1)
@@ -414,32 +340,21 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
 
     @override_settings(SITE_ID=1)
     def test_send_email_to_default_server_if_site_not_found_and_with_preferred_domains(self, mocked_get_connection):
-        email_server_2 = EmailServers.objects.create(
+        email_server_2 = self.create_smtp_email_server(
             email_default_from='email_2@example.com',
-            email_host='some host email_2',
-            email_port=1230,
-            email_username='email_2',
-            email_password='email_2',
-            email_use_ssl=True,
-            email_fail_silently=True,
-            email_timeout=60,
-            sending_method='smtp',
+            email_host='email_host_2',
+            email_username='email_username_2',
+            email_password='email_password_2',
             is_active=False,
         )
         site = Site.objects.get_current()
         email_server_2.sites.add(site)
 
-        email_server3 = EmailServers.objects.create(
-            email_default_from='email3@example.com',
-            email_host='some email_server3',
-            email_port=4321,
-            email_username='lameemail_server3',
-            email_password='4321',
-            email_use_ssl=True,
-            email_fail_silently=True,
-            email_timeout=70,
-            sending_method='smtp',
-            is_active=True,
+        self.create_smtp_email_server(
+            email_default_from='email_3@example.com',
+            email_host='email_host_3',
+            email_username='email_username_3',
+            email_password='email_password_3',
             main=True,
         )
 
@@ -470,29 +385,17 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
 
     @override_settings(SITE_ID=1)
     def test_send_any_email_to_site(self, mocked_get_connection):
-        email_server_2 = EmailServers.objects.create(
+        email_server_2 = self.create_smtp_email_server(
             email_default_from='email_2@example.com',
-            email_host='some host email_2',
-            email_port=1230,
-            email_username='email_2',
-            email_password='email_2',
-            email_use_ssl=True,
-            email_fail_silently=True,
-            email_timeout=60,
-            sending_method='smtp',
-            is_active=True,
+            email_host='email_host_2',
+            email_username='email_username_2',
+            email_password='email_password_2',
         )
-        email_server_3 = EmailServers.objects.create(
+        email_server_3 = self.create_smtp_email_server(
             email_default_from='email_3@example.com',
-            email_host='some host email_3',
-            email_port=1230,
-            email_username='email_3',
-            email_password='email_3',
-            email_use_ssl=True,
-            email_fail_silently=True,
-            email_timeout=60,
-            sending_method='smtp',
-            is_active=True,
+            email_host='email_host_3',
+            email_username='email_username_3',
+            email_password='email_password_3',
         )
         site = Site.objects.get_current()
         email_server_2.sites.add(site)
@@ -525,29 +428,17 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
 
     @override_settings(SITE_ID=1)
     def test_send_any_email_on_site_id_or_site_id_and_preferred(self, mocked_get_connection):
-        email_server_2 = EmailServers.objects.create(
+        email_server_2 = self.create_smtp_email_server(
             email_default_from='email_2@example.com',
-            email_host='some host email_2',
-            email_port=1230,
-            email_username='email_2',
-            email_password='email_2',
-            email_use_ssl=True,
-            email_fail_silently=True,
-            email_timeout=60,
-            sending_method='smtp',
-            is_active=True,
+            email_host='email_host_2',
+            email_username='email_username_2',
+            email_password='email_password_2',
         )
-        email_server_3 = EmailServers.objects.create(
+        email_server_3 = self.create_smtp_email_server(
             email_default_from='email_3@example.com',
-            email_host='some host email_3',
-            email_port=1230,
-            email_username='email_3',
-            email_password='email_3',
-            email_use_ssl=True,
-            email_fail_silently=True,
-            email_timeout=60,
-            sending_method='smtp',
-            is_active=True,
+            email_host='email_host_3',
+            email_username='email_username_3',
+            email_password='email_password_3',
         )
         site = Site.objects.get_current()
         email_server_2.sites.add(site)
@@ -570,17 +461,11 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
 
     @override_settings(SITE_ID=3)
     def test_site_not_found(self, mocked_get_connection):
-        email_server_2 = EmailServers.objects.create(
+        email_server_2 = self.create_smtp_email_server(
             email_default_from='email_2@example.com',
-            email_host='some host email_2',
-            email_port=1230,
-            email_username='email_2',
-            email_password='email_2',
-            email_use_ssl=True,
-            email_fail_silently=True,
-            email_timeout=60,
-            sending_method='smtp',
-            is_active=True,
+            email_host='email_host_2',
+            email_username='email_username_2',
+            email_password='email_password_2',
         )
         site = Site.objects.get(id=1)
         email_server_2.sites.add(site)
@@ -596,29 +481,17 @@ class EmailBackendDJNewsletterEmailMessageTests(TestCase):
 
     @override_settings(SITE_ID=1)
     def test_ignore_site_id_if_server_in_email(self, mocked_get_connection):
-        email_server_2 = EmailServers.objects.create(
+        email_server_2 = self.create_smtp_email_server(
             email_default_from='email_2@example.com',
-            email_host='some host email_2',
-            email_port=1230,
-            email_username='email_2',
-            email_password='email_2',
-            email_use_ssl=True,
-            email_fail_silently=True,
-            email_timeout=60,
-            sending_method='smtp',
-            is_active=True,
+            email_host='email_host_2',
+            email_username='email_username_2',
+            email_password='email_password_2',
         )
-        email_server_3 = EmailServers.objects.create(
+        email_server_3 = self.create_smtp_email_server(
             email_default_from='email_3@example.com',
-            email_host='some host email_3',
-            email_port=1230,
-            email_username='email_3',
-            email_password='email_3',
-            email_use_ssl=True,
-            email_fail_silently=True,
-            email_timeout=60,
-            sending_method='smtp',
-            is_active=True,
+            email_host='email_host_3',
+            email_username='email_username_3',
+            email_password='email_password_3',
         )
         site = Site.objects.get_current()
         email_server_2.sites.add(site)

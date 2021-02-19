@@ -23,7 +23,7 @@ class EmailTestsMixin:
         )
 
     @staticmethod
-    def create_email_server(
+    def create_smtp_email_server(
             email_default_from='email@example.com',
             email_host='email_host',
             email_port=1234,
@@ -32,8 +32,8 @@ class EmailTestsMixin:
             email_use_ssl=True,
             email_fail_silently=True,
             email_timeout=50,
-            sending_method='smtp',
             is_active=True,
+            main=False,
     ):
         return EmailServers.objects.create(
             email_default_from=email_default_from,
@@ -44,7 +44,23 @@ class EmailTestsMixin:
             email_use_ssl=email_use_ssl,
             email_fail_silently=email_fail_silently,
             email_timeout=email_timeout,
-            sending_method=sending_method,
+            sending_method='smtp',
+            is_active=is_active,
+            main=main,
+        )
+
+    @staticmethod
+    def create_unisender_email_server(
+            api_key='api_key',
+            api_username='api_username',
+            api_from_email='from_unisender',
+            is_active=True,
+    ):
+        return EmailServers.objects.create(
+            api_key=api_key,
+            api_username=api_username,
+            api_from_email=api_from_email,
+            sending_method='unisender_api',
             is_active=is_active,
         )
 
@@ -52,3 +68,27 @@ class EmailTestsMixin:
     def add_preferred_domain(domain, email_server):
         domain = Domains.objects.create(domain=domain)
         email_server.preferred_domains.add(domain)
+
+    @staticmethod
+    def get_mock_called(
+            backend='django.core.mail.backends.smtp.EmailBackend',
+            fail_silently=True,
+            host='email_host',
+            password='email_password',
+            port=1234,
+            timeout=50,
+            use_ssl=True,
+            use_tls=False,
+            username='email_username',
+    ):
+        return dict(
+            backend=backend,
+            fail_silently=fail_silently,
+            host=host,
+            password=password,
+            port=port,
+            timeout=timeout,
+            use_ssl=use_ssl,
+            use_tls=use_tls,
+            username=username,
+        )
