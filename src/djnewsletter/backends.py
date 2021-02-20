@@ -3,10 +3,10 @@ from copy import deepcopy
 from django.core.mail.backends.base import BaseEmailBackend
 from django.db import transaction
 
-from .handlers import (
+from djnewsletter.handlers import (
     DJNewsLetterSendingHandlers,
 )
-from .options import (
+from djnewsletter.options import (
     DJNewsLetterSendingMethodOptions,
 )
 

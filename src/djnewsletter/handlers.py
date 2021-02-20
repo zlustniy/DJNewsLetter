@@ -5,13 +5,13 @@ from django.conf import settings
 from django.contrib.sites.models import Site
 from django.core.mail import EmailMultiAlternatives
 
-from .exceptions import (
+from djnewsletter.exceptions import (
     SuitableEmailServerNotFoundException,
 )
-from .mail import (
+from djnewsletter.mail import (
     DJNewsLetterEmailMessage,
 )
-from .models import (
+from djnewsletter.models import (
     Bounced,
     EmailServers,
     Emails,

@@ -1,12 +1,12 @@
 from celery.task import task, current
 from django.core.mail import get_connection
 
-from .conf import (
+from djnewsletter.conf import (
     BACKEND,
     MAX_RETRIES,
     COUNTDOWN,
 )
-from .unisender import (
+from djnewsletter.unisender import (
     UniSenderAPIClient,
 )
 

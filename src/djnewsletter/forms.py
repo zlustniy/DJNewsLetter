@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import EmailServers
+from djnewsletter.models import EmailServers
 
 
 class EmailServersAdminForm(forms.ModelForm):

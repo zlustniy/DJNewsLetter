@@ -1,6 +1,6 @@
 from django.utils.functional import cached_property
 
-from .tasks import (
+from djnewsletter.tasks import (
     send_by_smtp,
     send_by_unisender,
 )
